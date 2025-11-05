@@ -1,5 +1,6 @@
 // lib/screens/result_page.dart
 import 'package:flutter/material.dart';
+import 'restaurant_map_screen.dart'; // 지도 화면 import
 
 class ResultPage extends StatelessWidget {
   final Map<String, dynamic> food;
@@ -233,6 +234,45 @@ class ResultPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    // 💡 새로 추가된 "내 주변 찾기" 버튼
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // 지도 화면으로 이동하면서 음식 이름 전달
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RestaurantMapScreen(
+                                foodName: food['name'], // 분석된 음식 이름 전달
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.location_on),
+                        label: const Text(
+                          '내 주변 찾기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1a3344),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // 기존 "검색하기" 버튼
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
