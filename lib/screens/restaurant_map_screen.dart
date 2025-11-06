@@ -86,7 +86,7 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
 
       // 2. 백엔드 API 호출
       // 💡 배포 시에는 실제 서버 IP 또는 도메인으로 변경하세요
-      final String baseUrl = '10.100.201.6:8080'; // 에뮬레이터용
+      final String baseUrl = '10.0.2.2:8080'; // 에뮬레이터용
       // final String baseUrl = 'your-server-ip:8080'; // 실제 기기용
 
       final String path = '/api/map/search';
