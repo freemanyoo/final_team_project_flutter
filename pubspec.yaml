@@ -29,7 +29,9 @@ dependencies:
   geolocator: ^13.0.0
 
   # HTTP 통신 (추가)
-  http: ^1.1.0 
+  http: ^1.1.0
+  # MIME 타입 확인
+  mime: ^1.0.0
   # 비디오 재생
   video_player: ^2.8.0
 

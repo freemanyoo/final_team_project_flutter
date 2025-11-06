@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:io';
 import 'dart:async';
+import '../services/analysis_service.dart';
+import 'result_page.dart';
 
 class CapturePage extends StatefulWidget {
   final Function(Map<String, dynamic>) onFoodDetected;
@@ -91,8 +93,26 @@ class _CapturePageState extends State<CapturePage>
       }
     } catch (e) {
       if (mounted) {
+        // 시뮬레이터 또는 카메라 사용 불가능한 경우 친절한 메시지 표시
+        String errorMessage = '카메라를 사용할 수 없습니다.';
+        if (e.toString().contains('simulator') || 
+            e.toString().contains('unsupported device') ||
+            e.toString().contains('BackWideDual') ||
+            e.toString().contains('BackAuto')) {
+          errorMessage = '시뮬레이터에서는 카메라를 사용할 수 없습니다.\n갤러리에서 사진을 선택해주세요.';
+        } else if (e.toString().contains('permission') || 
+                   e.toString().contains('권한')) {
+          errorMessage = '카메라 권한이 필요합니다.\n설정에서 권한을 허용해주세요.';
+        } else {
+          errorMessage = '카메라 오류: ${e.toString()}';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('카메라 오류: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.orange[700],
+          ),
         );
       }
     }
@@ -151,7 +171,7 @@ class _CapturePageState extends State<CapturePage>
     _videoController?.play();
   }
 
-  void _processImage() {
+  Future<void> _processImage() async {
     setState(() {
       _isProcessing = true;
     });
@@ -159,18 +179,83 @@ class _CapturePageState extends State<CapturePage>
     // 분석용 이미지 파일 사용 (백업된 파일 또는 현재 파일)
     final imageFileToAnalyze = _imageFileForAnalysis ?? _imageFile;
 
-    Timer(const Duration(seconds: 2), () {
+    if (imageFileToAnalyze == null) {
       if (mounted) {
-        final detectedFood = {
-          'name': '해산물 스파게티',
-          'calories': 426,
-          'weight': 340,
-          'rating': 7,
-          'imagePath': imageFileToAnalyze?.path,
-        };
-        widget.onFoodDetected(detectedFood);
+        setState(() {
+          _isProcessing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미지 파일을 찾을 수 없습니다.')),
+        );
       }
-    });
+      return;
+    }
+
+    try {
+      final analysisService = AnalysisService();
+      
+      // 백엔드 API 호출
+      final result = await analysisService.analyzeImage(
+        imageFile: imageFileToAnalyze,
+        userId: 1, // TODO: 실제 로그인한 사용자 ID로 변경
+        // youtubeKeyword: null, // 필요시 추가
+        // youtubeOrder: 'relevance',
+      );
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+        
+        // 결과를 Map 형태로 변환하여 전달
+        final detectedFood = result.toMap();
+        detectedFood['imagePath'] = imageFileToAnalyze.path;
+        
+        // 디버그 로그
+        print('✅ 분석 완료: ${detectedFood.toString()}');
+        print('📞 ResultPage로 이동 시작...');
+        
+        // 콜백 호출 (MainScreen에 알림)
+        widget.onFoodDetected(detectedFood);
+        
+        // CapturePage를 ResultPage로 교체
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultPage(
+                food: detectedFood,
+                onBack: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+          );
+          print('✅ ResultPage로 이동 완료');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+        
+        String errorMessage = '분석 중 오류가 발생했습니다.';
+        if (e is AnalysisException) {
+          errorMessage = e.message;
+        } else {
+          errorMessage = '오류: ${e.toString()}';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -227,16 +312,16 @@ class _CapturePageState extends State<CapturePage>
                                       child: VideoPlayer(_videoController!),
                                     )
                                   : Container(
-                                      height: 200,
-                                      decoration: BoxDecoration(
-                                        gradient: const LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Color(0xFF1a4d4d),
-                                            Color(0xFF0d2626),
-                                          ],
-                                        ),
+                        height: 200,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF1a4d4d),
+                              Color(0xFF0d2626),
+                            ],
+                          ),
                                       ),
                                       child: const Center(
                                         child: CircularProgressIndicator(
@@ -284,8 +369,8 @@ class _CapturePageState extends State<CapturePage>
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
-                                  ),
-                                ),
+                              ),
+                            ),
                                 child: const Text(
                                   '다시 촬영',
                                   style: TextStyle(
@@ -297,10 +382,10 @@ class _CapturePageState extends State<CapturePage>
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
+                                  child: Container(
+                                    decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [
+                                        colors: [
                                       Color(0xFF667eea),
                                       Color(0xFF764ba2),
                                     ],
@@ -332,60 +417,60 @@ class _CapturePageState extends State<CapturePage>
                         ),
                       ] else ...[
                         // 일반 모드: 사진 촬영 및 갤러리 버튼
-                        Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF667eea),
-                                Color(0xFF764ba2),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(30),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFF667eea),
+                              Color(0xFF764ba2),
+                            ],
                           ),
-                          child: ElevatedButton(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: ElevatedButton(
                             onPressed: _isProcessing ? null : _takePicture,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
                             ),
-                            child: const Text(
-                              '📷 사진 촬영하기',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          ),
+                          child: const Text(
+                            '📷 사진 촬영하기',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
                             onPressed: _isProcessing ? null : _pickFromGallery,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.grey[200],
-                              foregroundColor: Colors.black87,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[200],
+                            foregroundColor: Colors.black87,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
                             ),
-                            child: const Text(
-                              '🖼️ 갤러리에서 선택',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          ),
+                          child: const Text(
+                            '🖼️ 갤러리에서 선택',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
+                      ),
                       ],
                     ],
                   ),

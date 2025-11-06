@@ -45,17 +45,6 @@ class MyApp extends StatelessWidget {
       ),
       // [핵심] 앱의 첫 화면을 MainScreen이 아닌 LoginPage로 변경합니다.
       home: const LoginPage(),
-      // 에러 발생 시 빨간 화면 표시
-      builder: (BuildContext context, Widget? child) {
-        if (child != null) {
-          return child;
-        }
-        return const Scaffold(
-          body: Center(
-            child: Text('화면을 불러올 수 없습니다'),
-          ),
-        );
-      },
     );
   }
 }

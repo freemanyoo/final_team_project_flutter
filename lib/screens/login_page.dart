@@ -4,6 +4,7 @@ import 'main_screen.dart';
 import 'home_page.dart';
 import 'capture_page.dart';
 import 'result_page.dart';
+import 'restaurant_map_screen.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -32,11 +33,11 @@ class _LoginScreenState extends State<LoginPage> {
       appBar: AppBar(title: const Text('로그인 (임시)')), // AppBar가 있다면
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               // 1. "반가워요" 텍스트를 "음바페"로 변경
               const Text(
                 '음밥해', // <-- 이 부분을 수정했습니다.
@@ -225,7 +226,24 @@ class _LoginScreenState extends State<LoginPage> {
                 },
                 child: const Text('결과 (ResultPage) 가기'),
               ),
-              ],
+              const SizedBox(height: 10),
+
+              // 5. RestaurantMapScreen (지도 화면)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red[300]),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => RestaurantMapScreen(
+                        foodName: '파스타', // 테스트용 음식 이름
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('지도 화면 (RestaurantMapScreen) 가기'),
+              ),
+            ],
             ),
           ),
         ),

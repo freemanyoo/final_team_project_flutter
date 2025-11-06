@@ -12,6 +12,24 @@ class ResultPage extends StatelessWidget {
     required this.onBack,
   });
 
+  // 영양소 값 가져오기 헬퍼 함수
+  static String? _getNutritionValue(Map<String, dynamic> food, String key) {
+    if (food['nutrition'] == null) return null;
+    final nutrition = food['nutrition'] as Map<String, dynamic>;
+    final value = nutrition[key];
+    if (value == null) return null;
+    
+    // double 또는 int를 문자열로 변환
+    if (value is double) {
+      return '${value.toStringAsFixed(1)}g';
+    } else if (value is int) {
+      return '${value}g';
+    } else if (value is num) {
+      return '${value.toStringAsFixed(1)}g';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final similarFoods = ['비프 스파게티', '알리오 올리오', '까르보나라 파스타'];
@@ -115,7 +133,9 @@ class ResultPage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${food['rating']} / 10',
+                            food['accuracy'] != null
+                                ? '${food['accuracy'].toStringAsFixed(0)}%'
+                                : '${food['rating']} / 10',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -134,12 +154,27 @@ class ResultPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
-                      child: Text(
-                        food['name'],
+                      child: Column(
+                        children: [
+                          Text(
+                            food['name'] ?? '알 수 없음',
                         style: const TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
+                          ),
+                          if (food['message'] != null && food['message'].toString().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                food['message'],
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -163,15 +198,21 @@ class ResultPage extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: _MacroCard(
-                                  label: '양',
-                                  value: '${food['weight']} g',
+                                  label: '칼로리',
+                                  value: food['calories'] != null && food['calories'] > 0
+                                      ? '${food['calories']} kcal'
+                                      : food['nutrition'] != null && food['nutrition']['calories'] != null
+                                          ? '${food['nutrition']['calories'].toStringAsFixed(0)} kcal'
+                                          : '-',
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: _MacroCard(
-                                  label: '칼로리',
-                                  value: '${food['calories']}',
+                                  label: '정확도',
+                                  value: food['accuracy'] != null
+                                      ? '${food['accuracy'].toStringAsFixed(0)}%'
+                                      : '-',
                                 ),
                               ),
                             ],
@@ -183,6 +224,7 @@ class ResultPage extends StatelessWidget {
                                 child: _MacroCardSmall(
                                   label: '탄수화물',
                                   icon: '🌾',
+                                  value: _getNutritionValue(food, 'carbohydrates'),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -190,6 +232,7 @@ class ResultPage extends StatelessWidget {
                                 child: _MacroCardSmall(
                                   label: '단백질',
                                   icon: '🥩',
+                                  value: _getNutritionValue(food, 'protein'),
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -197,6 +240,7 @@ class ResultPage extends StatelessWidget {
                                 child: _MacroCardSmall(
                                   label: '지방',
                                   icon: '🥑',
+                                  value: _getNutritionValue(food, 'fat'),
                                 ),
                               ),
                             ],
@@ -367,8 +411,13 @@ class _MacroCard extends StatelessWidget {
 class _MacroCardSmall extends StatelessWidget {
   final String label;
   final String icon;
+  final String? value;
 
-  const _MacroCardSmall({required this.label, required this.icon});
+  const _MacroCardSmall({
+    required this.label,
+    required this.icon,
+    this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +438,15 @@ class _MacroCardSmall extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          Row(
+          value != null
+              ? Text(
+                  value!,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(icon, style: const TextStyle(fontSize: 24)),
