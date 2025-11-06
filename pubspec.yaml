@@ -11,13 +11,18 @@ dependencies:
   flutter:
     sdk: flutter
 
+  #로그인 관련
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+  url_launcher: ^6.3.0
+
   # UI 및 애니메이션
   lottie: ^3.1.2
   cupertino_icons: ^1.0.8
 
   # 카메라 및 이미지
   camera: ^0.10.0
-  image_picker: ^1.0.0
+  image_picker: ^1.2.0
 
   # AI 모델
   tflite_flutter: ^0.10.0
@@ -30,6 +35,7 @@ dependencies:
 
   # HTTP 통신 (추가)
   http: ^1.1.0
+  app_links: ^6.4.1
 
 dev_dependencies:
   flutter_test:

@@ -1,121 +1,129 @@
 // lib/screens/signup_page.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../controllers/login_controller.dart';
 
 class SignupPage extends StatefulWidget {
+  const SignupPage({super.key});
   @override
-  _SignupPageState createState() => _SignupPageState();
+  State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
-  bool _isPasswordObscure = true;
-  bool _isConfirmPasswordObscure = true;
+  final _c = LoginController();
+
+  final _userId = TextEditingController();
+  final _email = TextEditingController();
+  final _pw = TextEditingController();
+  final _pw2 = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  XFile? _picked;
+
+  @override
+  void dispose() {
+    _userId.dispose();
+    _email.dispose();
+    _pw.dispose();
+    _pw2.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final x = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (x != null) setState(() => _picked = x);
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    await _c.signup(
+      userId: _userId.text,
+      email: _email.text,
+      password: _pw.text,
+      profileImage: _picked,
+      onSuccess: () {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원가입 성공! 로그인 해주세요.')),
+        );
+        Navigator.of(context).pop();
+      },
+      onError: _showError,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // [참고] main.dart의 테마가 자동으로 적용됩니다.
+    final preview = _picked == null ? null : Image.file(File(_picked!.path), height: 80);
+
     return Scaffold(
-      resizeToAvoidBottomInset: true,
-      // AppBar가 있으면 자동으로 '뒤로가기' 버튼이 생깁니다.
-      appBar: AppBar(
-        title: Text('회원가입'),
-        backgroundColor: Colors.transparent, // 배경 투명
-        elevation: 0, // 그림자 제거
-        // AppBar의 아이콘/글자 색상은 테마에 따라 자동 설정됩니다.
-        // 만약 색상이 어색하다면 아래 주석을 풀어서 직접 지정하세요.
-        // foregroundColor: Colors.pink[400],
-        // iconTheme: IconThemeData(color: Colors.pink[400]),
-      ),
+      appBar: AppBar(title: const Text('회원가입')),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                '환영합니다!',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  // 테마의 primary 색상(주황색)을 따르도록 설정
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+              TextFormField(
+                controller: _userId,
+                decoration: const InputDecoration(labelText: '아이디'),
+                textInputAction: TextInputAction.next,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '아이디를 입력하세요' : null,
               ),
-              SizedBox(height: 48),
-
-              // [참고] 텍스트 필드 스타일은 main.dart의 테마가 적용됩니다.
-              // 만약 핑크 테마를 원하시면 main.dart의 inputDecorationTheme을 수정해야 합니다.
-              TextField(
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _email,
+                decoration: const InputDecoration(labelText: '이메일'),
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  prefixIcon: Icon(Icons.email_outlined),
-                  hintText: '이메일',
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                obscureText: _isPasswordObscure,
-                decoration: InputDecoration(
-                  prefixIcon: Icon(Icons.lock_outline),
-                  hintText: '비밀번호',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordObscure = !_isPasswordObscure;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                obscureText: _isConfirmPasswordObscure,
-                decoration: InputDecoration(
-                  prefixIcon: Icon(Icons.check_circle_outline),
-                  hintText: '비밀번호 확인',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isConfirmPasswordObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isConfirmPasswordObscure = !_isConfirmPasswordObscure;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: 32),
-
-              // [참고] 버튼 스타일도 main.dart의 테마가 적용됩니다.
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: 실제 회원가입 로직 구현
-                    print('회원가입 버튼 클릭됨');
-
-                    // 회원가입 성공 후 로그인 페이지로 돌아가기
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    }
-                  },
-                  child: Text('회원가입 완료!', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  // [핵심] 현재 페이지를 닫고 이전 페이지(로그인)로 돌아갑니다.
-                  Navigator.pop(context);
+                textInputAction: TextInputAction.next,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return '이메일을 입력하세요';
+                  if (!v.contains('@')) return '올바른 이메일을 입력하세요';
+                  return null;
                 },
-                child: Text(
-                  '이미 계정이 있으신가요? 로그인',
-                  // 글자색도 테마에 맞게 설정
-                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pw,
+                decoration: const InputDecoration(labelText: '비밀번호'),
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                validator: (v) => (v == null || v.isEmpty) ? '비밀번호를 입력하세요' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _pw2,
+                decoration: const InputDecoration(labelText: '비밀번호 확인'),
+                obscureText: true,
+                onFieldSubmitted: (_) => _submit(),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return '비밀번호 확인을 입력하세요';
+                  if (v != _pw.text) return '비밀번호가 일치하지 않습니다';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.image),
+                    label: const Text('프로필 이미지 선택(선택)'),
+                  ),
+                  const SizedBox(width: 12),
+                  if (preview != null) preview,
+                ],
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _submit,
+                child: const Text('회원가입 완료'),
               ),
             ],
           ),
