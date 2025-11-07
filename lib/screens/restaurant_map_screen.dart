@@ -106,7 +106,12 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
       if (Platform.isAndroid) {
         baseUrl = '10.0.2.2:8080'; // Android 에뮬레이터
       } else if (Platform.isIOS) {
-        baseUrl = '192.168.50.80:8080'; // iOS 시뮬레이터 - Mac의 실제 IP 주소
+        // ⚠️ 개인 IP 주소 변경 필요 ⚠️
+        // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
+        // Mac IP 주소 확인: ifconfig | grep "inet " | grep -v 127.0.0.1
+        // Windows IP 주소 확인: ipconfig
+        // Linux IP 주소 확인: hostname -I
+        baseUrl = '192.168.50.80:8080'; // 서버 IP 주소 (개인별로 변경 필요) - 현재 확인된 IP
       } else {
         baseUrl = 'localhost:8080'; // 기타 플랫폼
       }
@@ -239,8 +244,9 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
             '확인 사항:\n'
             '1. 백엔드 서버가 실행 중인지 확인\n'
             '2. 서버가 0.0.0.0:8080에 바인딩되어 있는지 확인\n'
-            '3. iOS 시뮬레이터의 경우 Mac IP 주소 사용 중\n'
-            '   (현재: http://192.168.50.80:8080)\n\n'
+            '3. iOS 시뮬레이터의 경우 서버 IP 주소 사용 중\n'
+            '   (현재: http://192.168.50.80:8080)\n'
+            '   ⚠️ IP 주소가 변경되었다면 코드에서 수정 필요!\n\n'
             '지도는 표시되지만 식당 정보는 불러올 수 없습니다.';
       } else if (e.toString().contains('SocketException')) {
         errorMessage = '네트워크 연결 오류가 발생했습니다.\n\n'

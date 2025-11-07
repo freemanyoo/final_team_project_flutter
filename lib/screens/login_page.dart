@@ -5,6 +5,7 @@ import 'home_page.dart';
 import 'capture_page.dart';
 import 'result_page.dart';
 import 'restaurant_map_screen.dart';
+import 'my_page.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -242,6 +243,19 @@ class _LoginScreenState extends State<LoginPage> {
                   );
                 },
                 child: const Text('지도 화면 (RestaurantMapScreen) 가기'),
+              ),
+              const SizedBox(height: 10),
+
+              // 마이페이지 바로가기
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1a3344)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MyPage()),
+                  );
+                },
+                child: const Text('마이페이지', style: TextStyle(color: Colors.white)),
               ),
             ],
             ),

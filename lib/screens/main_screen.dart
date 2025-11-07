@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import './home_page.dart'; // './'는 같은 screens 폴더라는 의미
 import './capture_page.dart';
+import './my_page.dart'; // 마이페이지 import
 import '../widgets/bottom_nav.dart'; // '../'는 상위 폴더(lib)로 나간다는 의미
 
 class MainScreen extends StatefulWidget {
@@ -38,8 +39,7 @@ class _MainScreenState extends State<MainScreen> {
           HomePage(onCapture: _navigateToCapture),
           const Center(child: Text('단식', style: TextStyle(fontSize: 24))),
           const Center(child: Text('이력', style: TextStyle(fontSize: 24))),
-          const Center(child: Text('내 주변', style: TextStyle(fontSize: 24))),
-          const Center(child: Text('mypage', style: TextStyle(fontSize: 24))),
+          const MyPage(), // 마이페이지 (인덱스 3)
         ],
       ),
       bottomNavigationBar: BottomNav(
