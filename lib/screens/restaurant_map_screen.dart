@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:developer';
+import '../util/debug_helper.dart';
 
 class RestaurantMapScreen extends StatefulWidget {
   final String foodName;
@@ -28,46 +28,55 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
   @override
   void initState() {
     super.initState();
+    print('\n========================================');
+    print('🍽️ RestaurantMapScreen 시작');
+    print('🍽️ 음식 이름: ${widget.foodName}');
+    print('========================================\n');
     _checkPermissionAndLoadMap();
   }
 
-  // 위치 권한 확인 및 지도 로드
   Future<void> _checkPermissionAndLoadMap() async {
+    print('🍽️ [1단계] 위치 권한 확인 시작');
+
     try {
-      // 위치 권한 확인
       LocationPermission permission = await Geolocator.checkPermission();
+      print('🍽️ 현재 권한: $permission');
 
       if (permission == LocationPermission.denied) {
+        print('🍽️ 권한 요청 중...');
         permission = await Geolocator.requestPermission();
+        print('🍽️ 권한 요청 결과: $permission');
+
         if (permission == LocationPermission.denied) {
           setState(() {
             _errorMessage = '위치 권한이 거부되었습니다.';
             _isLoading = false;
           });
+          print('❌ 권한 거부됨');
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
         setState(() {
-          _errorMessage = '위치 권한이 영구적으로 거부되었습니다. 설정에서 권한을 허용해주세요.';
+          _errorMessage = '위치 권한이 영구적으로 거부되었습니다.\n설정에서 권한을 허용해주세요.';
           _isLoading = false;
         });
+        print('❌ 권한 영구 거부됨');
         return;
       }
 
-      // 권한이 있으면 식당 검색
+      print('✅ 위치 권한 확보 완료');
       await findRestaurantsAndSetMarkers();
     } catch (e) {
-      log("Permission check error: $e");
+      print('❌ 권한 확인 중 에러: $e');
       setState(() {
-        _errorMessage = '위치 권한 확인 중 오류가 발생했습니다: $e';
+        _errorMessage = '위치 권한 확인 중 오류: $e';
         _isLoading = false;
       });
     }
   }
 
-  // API 호출 및 마커 생성
   Future<void> findRestaurantsAndSetMarkers() async {
     setState(() {
       _isLoading = true;
@@ -75,7 +84,8 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
     });
 
     try {
-      // 1. 현재 위치 가져오기
+      // 1. 현재 위치
+      print('\n🍽️ [2단계] 현재 위치 가져오기');
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -84,11 +94,13 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
         throw Exception("위치 정보를 가져올 수 없습니다.");
       }
 
-      // 2. 백엔드 API 호출
-      // 💡 배포 시에는 실제 서버 IP 또는 도메인으로 변경하세요
-      final String baseUrl = '10.100.201.6:8080'; // 에뮬레이터용
-      // final String baseUrl = 'your-server-ip:8080'; // 실제 기기용
+      print('✅ 위도: ${_currentPosition!.latitude}');
+      print('✅ 경도: ${_currentPosition!.longitude}');
 
+      // 2. API 호출
+      print('\n🍽️ [3단계] 백엔드 API 호출');
+
+      final String baseUrl = '10.100.201.6:8080';
       final String path = '/api/map/search';
       final params = {
         'foodName': widget.foodName,
@@ -97,20 +109,34 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
       };
 
       var uri = Uri.http(baseUrl, path, params);
-      log("API 요청: $uri");
 
+      print('📡 요청 URL: $uri');
+      print('📤 요청 파라미터:');
+      print('   - foodName: ${widget.foodName}');
+      print('   - latitude: ${_currentPosition!.latitude}');
+      print('   - longitude: ${_currentPosition!.longitude}');
+
+      final startTime = DateTime.now();
       var response = await http.get(uri);
+      final duration = DateTime.now().difference(startTime);
+
+      print('📥 응답 시간: ${duration.inMilliseconds}ms');
+      print('📥 상태 코드: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         String responseBody = utf8.decode(response.bodyBytes);
-        log("API 응답: $responseBody");
+        print('✅ 응답 성공!');
+        print('📦 응답 데이터: $responseBody');
 
         _restaurantList = jsonDecode(responseBody);
+        print('✅ JSON 파싱 성공');
+        print('🏪 검색된 식당 수: ${_restaurantList.length}');
 
-        // 3. 식당 목록으로 지도 마커 생성
+        // 3. 마커 생성
+        print('\n🍽️ [4단계] 지도 마커 생성');
         _markers.clear();
 
-        // 내 위치 마커 추가
+        // 내 위치 마커
         _markers.add(
           Marker(
             markerId: const MarkerId('my_location'),
@@ -122,10 +148,11 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
             infoWindow: const InfoWindow(title: '내 위치'),
           ),
         );
+        print('📍 내 위치 마커 추가 완료');
 
-        // 식당 마커 추가
-        for (var restaurant in _restaurantList) {
-          // 💡 백엔드 DTO 필드명에 맞게 수정 (latitude, longitude)
+        // 식당 마커들
+        for (var i = 0; i < _restaurantList.length; i++) {
+          var restaurant = _restaurantList[i];
           final lat = restaurant['latitude'];
           final lng = restaurant['longitude'];
           final name = restaurant['name'];
@@ -134,7 +161,7 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
           if (lat != null && lng != null) {
             _markers.add(
               Marker(
-                markerId: MarkerId(name ?? 'restaurant_${lat}_$lng'),
+                markerId: MarkerId('restaurant_$i'),
                 position: LatLng(lat, lng),
                 infoWindow: InfoWindow(
                   title: name ?? '식당',
@@ -143,17 +170,40 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                 icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
               ),
             );
+            print('📍 [$i] 마커 추가: $name (위도: $lat, 경도: $lng)');
+          } else {
+            print('⚠️ [$i] 위치 정보 없음: $restaurant');
           }
         }
 
-        log("마커 생성 완료: ${_markers.length}개");
+        print('✅ 총 ${_markers.length}개 마커 생성 완료 (내 위치 포함)');
+        print('\n========================================');
+        print('✅✅✅ 모든 작업 성공! ✅✅✅');
+        print('========================================\n');
+
+        if (_restaurantList.isEmpty) {
+          setState(() {
+            _errorMessage = '"${widget.foodName}"을(를) 판매하는\n주변 식당을 찾지 못했습니다.';
+          });
+          print('⚠️ 검색 결과가 없습니다.');
+        }
       } else {
-        throw Exception("서버 에러: ${response.statusCode}\n${response.body}");
+        String errorBody = utf8.decode(response.bodyBytes);
+        print('❌ 서버 에러 발생!');
+        print('❌ 상태 코드: ${response.statusCode}');
+        print('❌ 에러 내용: $errorBody');
+        throw Exception("서버 에러: ${response.statusCode}\n$errorBody");
       }
-    } catch (e) {
-      log("findRestaurants 에러: $e");
+    } catch (e, stackTrace) {
+      print('\n========================================');
+      print('❌❌❌ 에러 발생! ❌❌❌');
+      print('========================================');
+      print('에러: $e');
+      print('스택 트레이스: $stackTrace');
+      print('========================================\n');
+
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = '식당 검색 중 오류가 발생했습니다.\n\n에러: $e\n\n콘솔 로그를 확인해주세요.';
       });
     } finally {
       setState(() {
@@ -170,16 +220,19 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
         backgroundColor: const Color(0xFF1a3344),
         foregroundColor: Colors.white,
         actions: [
-          // 새로고침 버튼
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: findRestaurantsAndSetMarkers,
+            onPressed: () {
+              print('\n🔄 새로고침 시작\n');
+              findRestaurantsAndSetMarkers();
+            },
+            tooltip: '다시 검색',
           ),
         ],
       ),
       body: Stack(
         children: [
-          // 1. 구글맵 표시
+          // 1. 구글맵
           if (_currentPosition != null && !_isLoading)
             GoogleMap(
               initialCameraPosition: CameraPosition(
@@ -189,16 +242,17 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                 ),
                 zoom: 15,
               ),
+              cloudMapId: '9ab22eab75ae97fa799273bf',  // ← 이 줄 추가!
               onMapCreated: (controller) {
                 _mapController = controller;
               },
-              markers: _markers,
+              markers: _markers,  // 마커는 이미 생성되어 있음
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               mapType: MapType.normal,
               zoomControlsEnabled: true,
             )
-          // 2. 로딩 중
+          // 2. 로딩
           else if (_isLoading)
             Center(
               child: Column(
@@ -207,10 +261,15 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
                   Text("주변 식당을 검색하는 중..."),
+                  SizedBox(height: 8),
+                  Text(
+                    "콘솔 로그를 확인하세요",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 ],
               ),
             )
-          // 3. 에러 발생
+          // 3. 에러
           else if (_errorMessage.isNotEmpty)
               Center(
                 child: Padding(
@@ -224,9 +283,9 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                         color: Colors.red,
                       ),
                       const SizedBox(height: 16),
-                      Text(
+                      const Text(
                         "오류 발생",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -239,7 +298,10 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        onPressed: _checkPermissionAndLoadMap,
+                        onPressed: () {
+                          print('\n🔄 다시 시도 시작\n');
+                          _checkPermissionAndLoadMap();
+                        },
                         icon: const Icon(Icons.refresh),
                         label: const Text('다시 시도'),
                         style: ElevatedButton.styleFrom(
@@ -252,7 +314,7 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                 ),
               ),
 
-          // 4. 하단 식당 개수 표시
+          // 4. 하단 정보
           if (!_isLoading && _errorMessage.isEmpty && _restaurantList.isNotEmpty)
             Positioned(
               bottom: 16,
@@ -296,6 +358,7 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
   @override
   void dispose() {
     _mapController?.dispose();
+    print('🍽️ RestaurantMapScreen 종료\n');
     super.dispose();
   }
 }

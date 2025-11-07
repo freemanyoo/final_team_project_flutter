@@ -1,63 +1,31 @@
 // lib/screens/main_screen.dart
 import 'package:flutter/material.dart';
-import './home_page.dart'; // './'는 같은 screens 폴더라는 의미
-import './capture_page.dart';
-import './result_page.dart';
-import '../widgets/bottom_nav.dart'; // '../'는 상위 폴더(lib)로 나간다는 의미
+import '../widgets/bottom_nav.dart';
+import 'simple_map_screen.dart'; // ⭐ 추가
 
+/// MainScreen: 하단 네비게이션을 포함한 메인 화면
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({Key? key}) : super(key: key);
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  _MainScreenState createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  Map<String, dynamic>? _detectedFood;
 
-  void _navigateToCapture() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CapturePage(
-          onFoodDetected: (food) {
-            setState(() {
-              _detectedFood = food;
-            });
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ResultPage(
-                  food: food,
-                  onBack: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _currentIndex = 0;
-                    });
-                  },
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
+  // 각 탭에 해당하는 화면들
+  final List<Widget> _screens = [
+    const HomeTab(),        // 0: 홈
+    const HistoryTab(),     // 1: 이력
+    const SimpleMapScreen(), // 2: maps (⭐ 수정됨)
+    const ProfileTab(),     // 3: 내 정보
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          HomePage(onCapture: _navigateToCapture),
-          const Center(child: Text('단식', style: TextStyle(fontSize: 24))),
-          const Center(child: Text('이력', style: TextStyle(fontSize: 24))),
-          const Center(child: Text('내 주변', style: TextStyle(fontSize: 24))),
-          const Center(child: Text('mypage', style: TextStyle(fontSize: 24))),
-        ],
-      ),
+      body: _screens[_currentIndex],
       bottomNavigationBar: BottomNav(
         currentIndex: _currentIndex,
         onTap: (index) {
@@ -66,6 +34,43 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
       ),
+    );
+  }
+}
+
+// 임시 탭 화면들
+class HomeTab extends StatelessWidget {
+  const HomeTab({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('홈')),
+      body: const Center(child: Text('홈 화면')),
+    );
+  }
+}
+
+class HistoryTab extends StatelessWidget {
+  const HistoryTab({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('이력')),
+      body: const Center(child: Text('이력 화면')),
+    );
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  const ProfileTab({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('내 정보')),
+      body: const Center(child: Text('내 정보 화면')),
     );
   }
 }
