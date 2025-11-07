@@ -54,6 +54,7 @@ class _SignupPageState extends State<SignupPage> {
         Navigator.of(context).pop();
       },
       onError: _showError,
+      passwordConfirm: _pw.text,
     );
   }
 

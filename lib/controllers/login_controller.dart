@@ -21,13 +21,12 @@ class LoginController {
   /// 에뮬레이터: 10.0.2.2 / 실기기: PC IP, 웹: 동일 오리진 권장
   /// 필요하면 한 곳만 바꿔 쓰면 됨
   // TODO: PC 내부 IP로 변경 필요 (예: 'http://192.168.0.XX:8080')
-  static const String _baseUrl = 'http://10.0.2.2:8080';
+  static const String _baseUrl = 'http://localhost:8080';
 
   final _dio = Dio(BaseOptions(
     baseUrl: _baseUrl,
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
-    headers: {'Content-Type': 'application/json'},
     validateStatus: (_) => true, // 백엔드 에러 바디 읽기 위함
   ));
 
@@ -73,10 +72,10 @@ class LoginController {
     required void Function(String message) onError,
   }) async {
     try {
-      final res = await _dio.post('/api/auth/login', data: {
+      final res = await _dio.post('/api/users/login', data: {
         'userId': userId.trim(),
         'password': password,
-      });
+      }, options: Options(contentType: Headers.jsonContentType));
 
       if (res.statusCode == 200 && res.data != null) {
         // 백엔드가 {accessToken, refreshToken} 형태로 내려준다고 가정
@@ -106,41 +105,43 @@ class LoginController {
     required String userId,
     required String email,
     required String password,
+    required String passwordConfirm, // ✅ 추가
     XFile? profileImage,
     required VoidCallback onSuccess,
     required void Function(String message) onError,
   }) async {
     try {
-      if (profileImage == null) {
-        // 이미지 없이 JSON
-        final res = await _dio.post('/api/auth/signup', data: {
-          'userId': userId.trim(),
-          'email': email.trim(),
-          'password': password,
-        });
-        if (res.statusCode == 201 || res.statusCode == 200) {
-          onSuccess();
-        } else {
-          onError(_extractError(res));
-        }
+      // 1) signupData JSON 만들기
+      final signupData = jsonEncode({
+        'userId': userId.trim(),
+        'email': email.trim(),
+        'password': password,
+        'passwordConfirm': passwordConfirm, // ✅ 백엔드 검증 통과용
+      });
+
+      // 2) 멀티파트 생성 (이미지 없어도 signupData만 담아서 멀티파트로 보냄)
+      final map = <String, dynamic>{
+        'signupData': signupData, // ✅ 백엔드 @RequestParam("signupData")에 매칭
+      };
+      if (profileImage != null) {
+        map['profileImage'] = await MultipartFile.fromFile(
+          profileImage.path,
+          filename: p.basename(profileImage.path),
+        );
+      }
+      final form = FormData.fromMap(map);
+
+      // 3) 백엔드 실제 경로로 전송 (/api/users/signup)
+      final res = await _dio.post(
+        '/api/users/signup',
+        data: form,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        onSuccess();
       } else {
-        // 이미지 포함 Multipart
-        final form = FormData.fromMap({
-          // 서버에서 @RequestPart 또는 @RequestParam으로 받도록 구성
-          'userId': userId.trim(),
-          'email': email.trim(),
-          'password': password,
-          'profileImage': await MultipartFile.fromFile(
-            profileImage.path,
-            filename: p.basename(profileImage.path),
-          ),
-        });
-        final res = await _dio.post('/api/auth/signup', data: form);
-        if (res.statusCode == 201 || res.statusCode == 200) {
-          onSuccess();
-        } else {
-          onError(_extractError(res));
-        }
+        onError(_extractError(res));
       }
     } catch (e) {
       onError('회원가입 중 오류: $e');
