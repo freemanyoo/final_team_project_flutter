@@ -18,17 +18,48 @@ import 'package:app_links/app_links.dart'; // <--- app_links 추가
 class LoginController {
   LoginController();
 
-  /// 에뮬레이터: 10.0.2.2 / 실기기: PC IP, 웹: 동일 오리진 권장
-  /// 필요하면 한 곳만 바꿔 쓰면 됨
-  // TODO: PC 내부 IP로 변경 필요 (예: 'http://192.168.0.XX:8080')
-  static const String _baseUrl = 'http://localhost:8080';
+  /// 플랫폼별 서버 URL 자동 설정
+  /// ⚠️ Google OAuth2 정책: IP 주소는 리다이렉트 URI로 허용되지 않음
+  /// 
+  /// 실제 기기 테스트: ngrok 사용
+  /// 고정 도메인: sterling-jay-well.ngrok-free.app
+  /// 실행: ngrok http 8080 --domain=sterling-jay-well.ngrok-free.app
+  static const String _ngrokUrl = 'https://sterling-jay-well.ngrok-free.app';
+  
+  static String get _baseUrl {
+    // ngrok URL이 설정되어 있으면 모든 플랫폼에서 ngrok 사용 (실제 기기 테스트용)
+    if (_ngrokUrl.isNotEmpty) {
+      return _ngrokUrl;
+    }
+    
+    // ngrok 미사용 시: 로컬 개발용 (에뮬레이터/시뮬레이터)
+    if (kIsWeb) {
+      return 'http://localhost:8080';
+    } else if (Platform.isAndroid) {
+      // Android 에뮬레이터: 10.0.2.2는 localhost를 가리킴
+      return 'http://10.0.2.2:8080';
+    } else if (Platform.isIOS) {
+      // iOS 시뮬레이터: localhost 사용 가능
+      return 'http://localhost:8080';
+    } else {
+      return 'http://localhost:8080';
+    }
+  }
 
-  final _dio = Dio(BaseOptions(
-    baseUrl: _baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-    validateStatus: (_) => true, // 백엔드 에러 바디 읽기 위함
-  ));
+  Dio? _dioInstance;
+  Dio get _dio {
+    _dioInstance ??= Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      validateStatus: (_) => true, // 백엔드 에러 바디 읽기 위함
+      // ngrok 무료 버전 브라우저 경고 페이지 우회
+      headers: _ngrokUrl.isNotEmpty
+          ? {'ngrok-skip-browser-warning': 'true'}
+          : null,
+    ));
+    return _dioInstance!;
+  }
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
@@ -37,26 +68,37 @@ class LoginController {
   final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSub; // app_links는 널러블이 아닌 Uri 사용
 
-  /// 앱으로 돌아오는 커스텀 스킴(예: myapp://oauth?access=...&refresh=...)을 구독
+  /// 앱으로 돌아오는 커스텀 스킴(예: myapp://oauth2/callback?access=...&refresh=...)을 구독
   /// [onSuccess]는 토큰 저장이 끝나면 호출됨
   void startLinkListener({required VoidCallback onSuccess}) async {
     // 웹에서는 deep link 스트림이 없음
     if (kIsWeb) return;
 
+    debugPrint('🔗 Deep Link 리스너 시작');
     _linkSub?.cancel();
 
     // 1. 앱이 완전히 종료되었다가 링크로 시작한 경우 처리
-    final initialUri = await _appLinks.getInitialLink();
-    if (initialUri != null) {
-      await _handleOAuthRedirect(initialUri, onSuccess);
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        debugPrint('🔗 초기 링크 수신: $initialUri');
+        await _handleOAuthRedirect(initialUri, onSuccess);
+      } else {
+        debugPrint('🔗 초기 링크 없음');
+      }
+    } catch (e) {
+      debugPrint('❌ 초기 링크 처리 오류: $e');
     }
 
     // 2. 실행 중에 들어오는 링크 스트림 구독
     _linkSub = _appLinks.uriLinkStream.listen((uri) async {
+      debugPrint('🔗 실행 중 링크 수신: $uri');
       await _handleOAuthRedirect(uri, onSuccess);
     }, onError: (err) {
-      debugPrint('🔗 app_links error: $err');
+      debugPrint('❌ app_links error: $err');
     });
+    
+    debugPrint('✅ Deep Link 리스너 등록 완료');
   }
 
   Future<void> dispose() async {
@@ -154,6 +196,8 @@ class LoginController {
     required void Function(String message) onError,
   }) async {
     final url = Uri.parse('$_baseUrl/oauth2/authorization/$provider');
+    debugPrint('🔗 소셜 로그인 URL: $url (provider: $provider)');
+    
     if (kIsWeb) {
       // 웹: 새 탭으로 엶(동일 오리진에서 리다이렉트 처리 권장)
       if (!await launchUrl(url, webOnlyWindowName: '_self')) {
@@ -181,15 +225,28 @@ class LoginController {
   }
 
   Future<void> _handleOAuthRedirect(Uri uri, VoidCallback onSuccess) async {
-    // 예: myapp://oauth?access=...&refresh=...
+    debugPrint('🔗 OAuth2 리다이렉트 수신: $uri');
+    debugPrint('   스킴: ${uri.scheme}');
+    debugPrint('   호스트: ${uri.host}');
+    debugPrint('   경로: ${uri.path}');
+    debugPrint('   쿼리 파라미터: ${uri.queryParameters}');
+    
+    // 예: myapp://oauth2/callback?access=...&refresh=...
     final access = uri.queryParameters['access'];
     final refresh = uri.queryParameters['refresh'];
 
-    if (access == null || access.isEmpty) return;
+    if (access == null || access.isEmpty) {
+      debugPrint('❌ Access Token이 없습니다.');
+      return;
+    }
+    
+    debugPrint('✅ Access Token 수신 (길이: ${access.length})');
     await _storage.write(key: 'accessToken', value: access);
     if (refresh != null && refresh.isNotEmpty) {
+      debugPrint('✅ Refresh Token 수신 (길이: ${refresh.length})');
       await _storage.write(key: 'refreshToken', value: refresh);
     }
+    debugPrint('✅ 토큰 저장 완료');
     onSuccess();
   }
 }

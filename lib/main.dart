@@ -14,6 +14,13 @@ void main() {
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+
+  // 에러 핸들링 추가
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    print('Flutter 에러: ${details.exception}');
+  };
+
   runApp(const MyApp());
 }
 
@@ -31,7 +38,8 @@ class MyApp extends StatelessWidget {
         // 여기서는 기존 주황색 테마를 유지하겠습니다.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
         useMaterial3: true,
-        fontFamily: 'NotoSans',
+        // fontFamily: 'NotoSans', // 폰트가 없으면 주석 처리
+        scaffoldBackgroundColor: Colors.white, // 기본 배경색 설정
 
         // (선택) 여기에 이전에 만들었던 '귀염뽀짝' 테마(버튼, 텍스트필드)를
         // 추가하면 로그인/회원가입 페이지에도 바로 적용됩니다!

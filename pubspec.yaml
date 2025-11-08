@@ -15,27 +15,34 @@ dependencies:
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.2
   url_launcher: ^6.3.0
+  app_links: ^6.4.1
 
   # UI 및 애니메이션
   lottie: ^3.1.2
   cupertino_icons: ^1.0.8
 
   # 카메라 및 이미지
-  camera: ^0.10.0
+  camera: ^0.11.0
   image_picker: ^1.2.0
 
   # AI 모델
-  tflite_flutter: ^0.10.0
+  tflite_flutter: ^0.12.0
 
   # 구글맵 관련 (추가)
   google_maps_flutter: ^2.5.0
 
   # 위치 정보 (추가)
-  geolocator: ^10.1.0
+  geolocator: ^13.0.0
 
   # HTTP 통신 (추가)
   http: ^1.1.0
-  app_links: ^6.4.1
+
+  # MIME 타입 확인
+  mime: ^1.0.0
+  # 비디오 재생
+  video_player: ^2.8.0
+  # 날짜 포맷팅
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
@@ -46,3 +53,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/videos/video.mp4
