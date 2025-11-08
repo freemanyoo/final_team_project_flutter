@@ -36,12 +36,21 @@ class _LoginPageState extends State<LoginPage> {
 
   void _onLoginSuccess() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('로그인 성공!')),
-    );
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScreen()),
-    );
+    
+    // 다음 프레임에서 네비게이션 (context 안정화 대기)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인 성공!')),
+      );
+      
+      // 스택을 정리하고 MainScreen으로 이동
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false, // 모든 이전 라우트 제거
+      );
+    });
   }
 
   void _showError(String msg) {
