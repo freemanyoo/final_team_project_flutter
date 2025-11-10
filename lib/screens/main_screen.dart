@@ -1,9 +1,9 @@
 // lib/screens/main_screen.dart
 import 'package:flutter/material.dart';
-import './home_page.dart';
+import './home_page.dart'; // './'는 같은 screens 폴더라는 의미
 import './capture_page.dart';
-import 'simple_map_screen.dart';
-import '../widgets/bottom_nav.dart';
+import './my_page.dart'; // 마이페이지 import
+import '../widgets/bottom_nav.dart'; // '../'는 상위 폴더(lib)로 나간다는 의미
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,6 +21,8 @@ class _MainScreenState extends State<MainScreen> {
       MaterialPageRoute(
         builder: (context) => CapturePage(
           onFoodDetected: (food) {
+            // CapturePage에서 ResultPage로 직접 이동하므로, 여기서는 아무것도 하지 않음
+            // 이 콜백은 MainScreen에 분석 완료를 알리는 용도로만 사용됨
             print('✅ MainScreen: 분석 완료 (네비게이션은 CapturePage에서 수행)');
           },
         ),
@@ -34,14 +36,12 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          HomePage(onCapture: _navigateToCapture),      // index 0: 홈
-          const Center(child: Text('단식', style: TextStyle(fontSize: 24))),  // index 1: 단식
-          const SimpleMapScreen(),                       // index 2: maps (여기로 이동)
-          const Center(child: Text('이력', style: TextStyle(fontSize: 24))),  // index 3: 이력
-          const Center(child: Text('mypage', style: TextStyle(fontSize: 24))), // index 4: 내정보
+          HomePage(onCapture: _navigateToCapture),
+          const Center(child: Text('단식', style: TextStyle(fontSize: 24))),
+          const Center(child: Text('이력', style: TextStyle(fontSize: 24))),
+          const MyPage(), // 마이페이지 (인덱스 3)
         ],
       ),
-
       bottomNavigationBar: BottomNav(
         currentIndex: _currentIndex,
         onTap: (index) {

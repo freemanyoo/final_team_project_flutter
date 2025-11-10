@@ -36,7 +36,6 @@ dependencies:
 
   # HTTP 통신 (추가)
   http: ^1.1.0
-  http_parser: ^4.0.2
 
   # MIME 타입 확인
   mime: ^1.0.0

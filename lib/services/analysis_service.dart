@@ -3,9 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
-import 'package:http_parser/http_parser.dart';
 import '../core/config/api_config.dart'; // 공통 설정 사용
-
 
 class AnalysisService {
   /// 공통 설정에서 base URL 가져오기

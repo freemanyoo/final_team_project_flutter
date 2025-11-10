@@ -33,21 +33,8 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
     });
 
     try {
-      // 1. 위치 서비스 확인
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      print('📍 위치 서비스: $serviceEnabled');
-
-      if (!serviceEnabled) {
-        setState(() {
-          _errorMessage = '위치 서비스가 꺼져 있습니다.\n설정에서 켜주세요.';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 2. 위치 권한 확인
+      // 위치 권한 확인
       LocationPermission permission = await Geolocator.checkPermission();
-      print('📍 권한 상태: $permission');
 
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -68,33 +55,18 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
         return;
       }
 
-      // 3. 현재 위치 가져오기
-      print('📍 GPS 위치 요청 중...');
+      // 현재 위치 가져오기
       _currentPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 20),
       );
-
-      print('✅ 위치 획득: (${_currentPosition!.latitude}, ${_currentPosition!.longitude})');
 
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
       log("위치 가져오기 에러: $e");
-
-      // 마지막 위치 시도
-      try {
-        _currentPosition = await Geolocator.getLastKnownPosition();
-        if (_currentPosition != null) {
-          print('✅ 마지막 위치 사용: (${_currentPosition!.latitude}, ${_currentPosition!.longitude})');
-        }
-      } catch (e2) {
-        log("마지막 위치도 실패: $e2");
-      }
-
       setState(() {
-        _errorMessage = '위치 정보를 가져올 수 없습니다.\n\nGPS가 켜져 있고 실외에 계신가요?';
+        _errorMessage = '위치 정보를 가져올 수 없습니다: $e';
         _isLoading = false;
       });
     }
@@ -142,6 +114,7 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
                 ),
                 zoom: 15,
               ),
+              cloudMapId: '9ab22eab75ae97fa', // 동일한 Map ID 사용
               onMapCreated: (controller) {
                 _mapController = controller;
               },
