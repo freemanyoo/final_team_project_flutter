@@ -27,6 +27,7 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
 
   // 현재 위치만 가져오기
   Future<void> _loadCurrentLocation() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -39,6 +40,7 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          if (!mounted) return;
           setState(() {
             _errorMessage = '위치 권한이 거부되었습니다.';
             _isLoading = false;
@@ -48,6 +50,7 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
       }
 
       if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
         setState(() {
           _errorMessage = '위치 권한이 영구적으로 거부되었습니다.\n설정에서 권한을 허용해주세요.';
           _isLoading = false;
@@ -60,11 +63,13 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
       log("위치 가져오기 에러: $e");
+      if (!mounted) return;
       setState(() {
         _errorMessage = '위치 정보를 가져올 수 없습니다: $e';
         _isLoading = false;
@@ -85,14 +90,16 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
             IconButton(
               icon: const Icon(Icons.my_location),
               onPressed: () {
-                _mapController?.animateCamera(
-                  CameraUpdate.newLatLng(
-                    LatLng(
-                      _currentPosition!.latitude,
-                      _currentPosition!.longitude,
+                if (mounted && _mapController != null) {
+                  _mapController!.animateCamera(
+                    CameraUpdate.newLatLng(
+                      LatLng(
+                        _currentPosition!.latitude,
+                        _currentPosition!.longitude,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
             ),
           // 새로고침 버튼
@@ -114,7 +121,8 @@ class _SimpleMapScreenState extends State<SimpleMapScreen> {
                 ),
                 zoom: 15,
               ),
-              cloudMapId: '9ab22eab75ae97fa', // 동일한 Map ID 사용
+              // cloudMapId는 Google Cloud Map ID가 있을 때만 사용
+              // cloudMapId: '9ab22eab75ae97fa',
               onMapCreated: (controller) {
                 _mapController = controller;
               },

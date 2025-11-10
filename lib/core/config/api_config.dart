@@ -1,37 +1,33 @@
-/// 🔹 모든 API 요청의 공통 base URL
+/// 🔹 API 요청의 base URL 설정
 /// 
-/// ⚠️ 중요: ngrok을 사용하면 모든 플랫폼에서 같은 URL을 사용합니다.
-/// ngrok 미사용 시 플랫폼별로 자동으로 올바른 URL을 선택합니다.
+/// ⚠️ 중요: 
+/// - 인증 API (로그인, 회원가입, OAuth2): NGROK 사용 (외부 접근 필요)
+/// - 일반 API (지도, 분석 등): 로컬 서버 사용
+/// - NGROK이 없어도 로컬 서버로 폴백하여 작동
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   // ============================================
-  // 🔧 ngrok 설정 (우선 사용)
+  // 🔧 NGROK 설정 (OAuth2 로그인용)
   // ============================================
-  // ngrok 사용 시: 아래 URL을 입력하세요
-  // ngrok 미사용 시: 빈 문자열로 두세요
+  // OAuth2 로그인만 NGROK 사용 (소셜 로그인 리다이렉트 필요)
+  // NGROK 미사용 시: 빈 문자열로 두세요 (로컬 서버로 폴백)
   static const String _ngrokUrl = 'https://sterling-jay-well.ngrok-free.app';
   
   // ============================================
-  // 🔧 로컬 개발 설정 (ngrok 미사용 시)
+  // 🔧 로컬 개발 설정 (일반 API용)
   // ============================================
   // ⚠️ 실제 기기 테스트 시 여기를 변경하세요!
   // Mac IP 확인: ifconfig | grep "inet " | grep -v 127.0.0.1
   // Windows IP 확인: ipconfig
   // Linux IP 확인: hostname -I
-  // 현재 확인된 IP: 10.100.201.131
-  static const String _serverIp = '10.100.201.131'; // 본인의 서버 IP 주소로 변경!
+  // 현재 확인된 IP: 10.100.201.26 (Android 실제 기기용)
+  static const String _serverIp = '10.100.201.26'; // 본인의 서버 IP 주소로 변경!
   static const int _serverPort = 8080;
   
-  /// 플랫폼별로 자동으로 올바른 base URL 반환
-  static String get baseUrl {
-    // ngrok URL이 설정되어 있으면 모든 플랫폼에서 ngrok 사용
-    if (_ngrokUrl.isNotEmpty) {
-      return _ngrokUrl;
-    }
-    
-    // ngrok 미사용 시: 플랫폼별로 자동 선택
+  /// 플랫폼별 로컬 서버 URL 반환 (일반 API용)
+  static String _getLocalServerUrl() {
     // 웹 환경
     if (kIsWeb) {
       return 'http://localhost:$_serverPort';
@@ -55,10 +51,31 @@ class ApiConfig {
     }
   }
   
-  /// ngrok 사용 여부 확인
+  /// 인증 API용 base URL (OAuth2 로그인용 - NGROK 우선, 없으면 로컬)
+  /// 로그인, 회원가입, OAuth2 소셜 로그인에 사용
+  static String get authBaseUrl {
+    // NGROK URL이 설정되어 있으면 NGROK 사용
+    if (_ngrokUrl.isNotEmpty) {
+      return _ngrokUrl;
+    }
+    // NGROK이 없으면 로컬 서버로 폴백
+    return _getLocalServerUrl();
+  }
+  
+  /// 일반 API용 base URL (로컬 서버만 사용)
+  /// 지도, 분석, 마이페이지 등 일반 기능에 사용
+  static String get apiBaseUrl {
+    return _getLocalServerUrl();
+  }
+  
+  /// 하위 호환성을 위한 baseUrl (일반 API용으로 사용)
+  /// @deprecated: apiBaseUrl 사용 권장
+  static String get baseUrl => apiBaseUrl;
+  
+  /// NGROK 사용 여부 확인
   static bool get isUsingNgrok => _ngrokUrl.isNotEmpty;
   
-  /// ngrok 헤더 (무료 버전 브라우저 경고 페이지 우회)
+  /// NGROK 헤더 (무료 버전 브라우저 경고 페이지 우회)
   static Map<String, String>? get ngrokHeaders {
     if (isUsingNgrok) {
       return {'ngrok-skip-browser-warning': 'true'};
@@ -66,16 +83,23 @@ class ApiConfig {
     return null;
   }
   
-  /// API 엔드포인트 전체 URL 생성
-  static String getApiUrl(String endpoint) {
-    // endpoint가 이미 /로 시작하면 그대로, 아니면 / 추가
+  /// 인증 API 엔드포인트 전체 URL 생성
+  static String getAuthApiUrl(String endpoint) {
     final path = endpoint.startsWith('/') ? endpoint : '/$endpoint';
-    return '$baseUrl$path';
+    return '$authBaseUrl$path';
+  }
+  
+  /// 일반 API 엔드포인트 전체 URL 생성
+  static String getApiUrl(String endpoint) {
+    final path = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    return '$apiBaseUrl$path';
   }
   
   /// 디버그용: 현재 사용 중인 URL 출력
   static void printCurrentUrl() {
-    print('🔗 ApiConfig baseUrl: $baseUrl');
+    print('🔐 인증 API URL (authBaseUrl): $authBaseUrl');
+    print('🌐 일반 API URL (apiBaseUrl): $apiBaseUrl');
     print('📱 Platform: ${kIsWeb ? 'Web' : Platform.isIOS ? 'iOS' : Platform.isAndroid ? 'Android' : 'Other'}');
+    print('🔗 NGROK 사용: ${isUsingNgrok ? "예" : "아니오 (로컬 서버 사용)"}');
   }
 }

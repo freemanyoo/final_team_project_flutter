@@ -238,8 +238,10 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
       // 2. API 호출
       print('\n🍽️ [3단계] 백엔드 API 호출');
 
-      // 공통 설정에서 base URL 사용
-      final baseUrl = ApiConfig.baseUrl;
+      // 일반 API용 base URL 사용 (로컬 서버)
+      final apiBaseUrl = ApiConfig.apiBaseUrl;
+      // Uri.http()를 위해 'http://' 또는 'https://' 제거하고 호스트:포트만 추출
+      final baseUrl = apiBaseUrl.replaceFirst(RegExp(r'^https?://'), '');
       final String path = '/api/map/search';
       final params = {
         'foodName': widget.foodName,

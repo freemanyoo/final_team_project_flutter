@@ -3,9 +3,26 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/config/api_config.dart'; // 공통 설정 사용
 
 class AnalysisService {
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  
+  /// JWT 토큰을 헤더에 포함한 HTTP 헤더 생성
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    
+    // JWT 토큰 가져오기
+    final accessToken = await _storage.read(key: 'accessToken');
+    if (accessToken != null && accessToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $accessToken';
+    }
+    
+    return headers;
+  }
   /// 공통 설정에서 base URL 가져오기
   static String get baseUrl {
     final url = ApiConfig.getApiUrl('/api/analysis');
@@ -223,8 +240,8 @@ class AnalysisService {
     String? keyword,
     String order = 'relevance',
   }) async {
-    // 공통 설정에서 base URL 사용
-    final baseUrl = ApiConfig.baseUrl;
+    // 일반 API용 base URL 사용 (로컬 서버)
+    final baseUrl = ApiConfig.apiBaseUrl;
     final url = Uri.parse('$baseUrl/api/youtube/search').replace(
       queryParameters: {
         'foodName': foodName,
@@ -266,23 +283,24 @@ class AnalysisService {
   }
 
   /// 분석 히스토리 조회
+  /// JWT 토큰에서 자동으로 사용자 ID를 추출합니다.
   Future<List<dynamic>> getAnalysisHistory({
-    required int userId,
     int page = 0,
     int size = 10,
   }) async {
-    // 공통 설정에서 base URL 사용
-    final baseUrl = ApiConfig.baseUrl;
+    // 일반 API용 base URL 사용 (로컬 서버)
+    final baseUrl = ApiConfig.apiBaseUrl;
     final url = Uri.parse('$baseUrl/api/analysis/history').replace(
       queryParameters: {
-        'userId': userId.toString(),
         'page': page.toString(),
         'size': size.toString(),
       },
     );
 
     try {
-      final response = await http.get(url).timeout(
+      // JWT 토큰을 헤더에 포함
+      final headers = await _getAuthHeaders();
+      final response = await http.get(url, headers: headers).timeout(
         const Duration(seconds: 30),
         onTimeout: () {
           throw AnalysisException('분석 히스토리 조회 요청 시간 초과');
@@ -332,17 +350,16 @@ class AnalysisService {
   }
 
   /// YouTube 레시피 클릭 시 저장
+  /// JWT 토큰에서 자동으로 사용자 ID를 추출합니다.
   Future<void> saveClickedYouTubeRecipe({
-    required int userId,
     required String historyId,
     required String title,
     required String url,
   }) async {
-    // 공통 설정에서 base URL 사용
-    final baseUrl = ApiConfig.baseUrl;
+    // 일반 API용 base URL 사용 (로컬 서버)
+    final baseUrl = ApiConfig.apiBaseUrl;
     final uri = Uri.parse('$baseUrl/api/analysis/youtube-recipe/click').replace(
       queryParameters: {
-        'userId': userId.toString(),
         'historyId': historyId,
         'title': title,
         'url': url,
@@ -350,7 +367,9 @@ class AnalysisService {
     );
 
     try {
-      final response = await http.post(uri).timeout(
+      // JWT 토큰을 헤더에 포함
+      final headers = await _getAuthHeaders();
+      final response = await http.post(uri, headers: headers).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
           throw AnalysisException('YouTube 레시피 저장 요청 시간 초과');

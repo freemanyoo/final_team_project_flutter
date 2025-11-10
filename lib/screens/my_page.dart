@@ -15,14 +15,20 @@ class MyPage extends StatefulWidget {
 class _MyPageState extends State<MyPage> {
   List<dynamic> _historyList = [];
   bool _isLoading = true;
-  final int _userId = 1; // TODO: 실제 사용자 ID로 변경
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _loadUserIdAndHistory();
+  }
+
+  /// 히스토리 로드 (JWT 토큰에서 자동으로 사용자 ID 추출)
+  Future<void> _loadUserIdAndHistory() async {
+    // 백엔드에서 JWT 토큰을 통해 자동으로 사용자 ID를 추출하므로
+    // 프론트엔드에서는 토큰만 헤더에 포함하면 됩니다.
+    await _loadHistory();
   }
 
   @override
@@ -37,8 +43,8 @@ class _MyPageState extends State<MyPage> {
     });
 
     try {
+      // JWT 토큰에서 자동으로 사용자 ID를 추출하므로 userId 파라미터 불필요
       final history = await AnalysisService().getAnalysisHistory(
-        userId: _userId,
         page: 0,
         size: 20,
       );
@@ -446,7 +452,6 @@ class _MyPageState extends State<MyPage> {
                           // 링크 클릭 시 DB에 저장
                           try {
                             await AnalysisService().saveClickedYouTubeRecipe(
-                              userId: _userId,
                               historyId: historyId,
                               title: title,
                               url: url,

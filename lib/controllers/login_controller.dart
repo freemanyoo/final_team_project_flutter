@@ -19,8 +19,8 @@ import '../core/config/api_config.dart'; // 공통 설정 사용
 class LoginController {
   LoginController();
 
-  /// 공통 설정에서 base URL 가져오기
-  static String get _baseUrl => ApiConfig.baseUrl;
+  /// 인증 API용 base URL 가져오기 (NGROK 우선, 없으면 로컬)
+  static String get _baseUrl => ApiConfig.authBaseUrl;
 
   Dio? _dioInstance;
   Dio get _dio {
@@ -103,6 +103,8 @@ class LoginController {
           return;
         }
         await _storage.write(key: 'accessToken', value: access.toString());
+        // 로그인한 userId 저장 (히스토리 조회에 사용)
+        await _storage.write(key: 'userId', value: userId.trim());
         if (refresh != null) {
           await _storage.write(key: 'refreshToken', value: refresh.toString());
         }
