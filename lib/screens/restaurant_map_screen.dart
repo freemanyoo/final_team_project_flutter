@@ -5,7 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io'; // Platform 사용을 위해 추가
+import 'dart:async'; // TimeoutException 사용
 import '../util/debug_helper.dart';
+import '../core/config/api_config.dart'; // 공통 설정 사용
 
 class RestaurantMapScreen extends StatefulWidget {
   final String foodName;
@@ -40,24 +42,79 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
     print('🍽️ [1단계] 위치 권한 확인 시작');
 
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      print('🍽️ 현재 권한: $permission');
+      // iOS에서는 권한 확인을 건너뛰고 바로 위치 가져오기 시도
+      // getCurrentPosition()이 자동으로 권한을 요청하고 처리함
+      if (Platform.isIOS) {
+        print('🍽️ [1-1] iOS 플랫폼 감지 - getCurrentPosition()이 자동으로 권한 처리');
+        print('🍽️ [1-2] 바로 위치 가져오기 시도 (권한 요청 포함)');
+        // iOS에서는 권한 확인 단계를 건너뛰고 바로 위치 가져오기 시도
+        // getCurrentPosition()이 자동으로 권한을 요청하고 처리함
+        await findRestaurantsAndSetMarkers();
+        return;
+      }
 
+      // Android에서는 정상적인 권한 확인 프로세스 진행
+      // 1. 위치 서비스 활성화 확인
+      print('🍽️ [1-1] 위치 서비스 활성화 확인 중...');
+      bool serviceEnabled = true;
+      try {
+        serviceEnabled = await Geolocator.isLocationServiceEnabled()
+            .timeout(const Duration(seconds: 2), onTimeout: () {
+          print('⚠️ 위치 서비스 확인 타임아웃 - 계속 진행');
+          return true;
+        });
+        print('🍽️ 위치 서비스 활성화 상태: $serviceEnabled');
+      } catch (e) {
+        print('⚠️ 위치 서비스 확인 중 에러 (계속 진행): $e');
+        serviceEnabled = true;
+      }
+      
+      if (!serviceEnabled) {
+        setState(() {
+          _errorMessage = '위치 서비스가 비활성화되어 있습니다.\n설정에서 위치 서비스를 켜주세요.';
+          _isLoading = false;
+        });
+        print('❌ 위치 서비스 비활성화');
+        return;
+      }
+
+      // 2. 위치 권한 확인 (타임아웃 매우 짧게)
+      print('🍽️ [1-2] 위치 권한 확인 중...');
+      LocationPermission permission = LocationPermission.denied;
+      try {
+        permission = await Geolocator.checkPermission()
+            .timeout(const Duration(seconds: 2), onTimeout: () {
+          print('⚠️ 권한 확인 타임아웃 - denied로 처리하고 계속 진행');
+          return LocationPermission.denied;
+        });
+        print('🍽️ 현재 권한: $permission');
+      } catch (e) {
+        print('⚠️ 권한 확인 중 에러: $e - denied로 처리하고 계속 진행');
+        permission = LocationPermission.denied;
+      }
+
+      // 3. 권한이 없으면 요청
       if (permission == LocationPermission.denied) {
-        print('🍽️ 권한 요청 중...');
-        permission = await Geolocator.requestPermission();
-        print('🍽️ 권한 요청 결과: $permission');
-
-        if (permission == LocationPermission.denied) {
-          setState(() {
-            _errorMessage = '위치 권한이 거부되었습니다.';
-            _isLoading = false;
+        print('🍽️ [1-3] 권한 요청 중...');
+        try {
+          permission = await Geolocator.requestPermission()
+              .timeout(const Duration(seconds: 8), onTimeout: () {
+            print('⚠️ 권한 요청 타임아웃 - 계속 진행');
+            return LocationPermission.denied;
           });
-          print('❌ 권한 거부됨');
-          return;
+          print('🍽️ 권한 요청 결과: $permission');
+        } catch (e) {
+          print('⚠️ 권한 요청 중 에러: $e - 계속 진행');
+          permission = LocationPermission.denied;
+        }
+
+        // 권한이 거부되어도 일단 위치 가져오기 시도 (getCurrentPosition이 다시 요청함)
+        if (permission == LocationPermission.denied) {
+          print('⚠️ 권한 거부됨 - 위치 가져오기 시도 (자동 권한 요청)');
         }
       }
 
+      // 4. 영구 거부 확인
       if (permission == LocationPermission.deniedForever) {
         setState(() {
           _errorMessage = '위치 권한이 영구적으로 거부되었습니다.\n설정에서 권한을 허용해주세요.';
@@ -67,12 +124,15 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
         return;
       }
 
-      print('✅ 위치 권한 확보 완료');
+      // 5. 권한 확인 완료
+      print('✅ 위치 권한 확인 완료');
       await findRestaurantsAndSetMarkers();
-    } catch (e) {
+      
+    } catch (e, stackTrace) {
       print('❌ 권한 확인 중 에러: $e');
+      print('❌ 스택 트레이스: $stackTrace');
       setState(() {
-        _errorMessage = '위치 권한 확인 중 오류: $e';
+        _errorMessage = '위치 권한 확인 중 오류가 발생했습니다.\n에러: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -85,14 +145,91 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
     });
 
     try {
-      // 1. 현재 위치
+      // 1. 현재 위치 가져오기
       print('\n🍽️ [2단계] 현재 위치 가져오기');
-      _currentPosition = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      print('🍽️ 플랫폼: ${Platform.isIOS ? "iOS" : "Android"}');
+      
+      try {
+        // 실제 기기에서는 적절한 정확도 사용
+        LocationAccuracy accuracy = LocationAccuracy.medium; // medium이 실기기에서 가장 안정적
+        
+        print('🍽️ 위치 정확도: $accuracy');
+        print('🍽️ 위치 가져오기 시작...');
+        
+        _currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: accuracy,
+          timeLimit: const Duration(seconds: 10), // 실기기에서는 10초로 충분
+        ).timeout(
+          const Duration(seconds: 15), // 전체 타임아웃 15초
+          onTimeout: () {
+            print('⚠️ 위치 가져오기 타임아웃 (15초)');
+            print('⚠️ 기본 위치 사용 (서울 시청)');
+            // 타임아웃 시 서울 시청 좌표 사용 (기본값)
+            return Position(
+              latitude: 37.5665,
+              longitude: 126.9780,
+              timestamp: DateTime.now(),
+              accuracy: 0,
+              altitude: 0,
+              altitudeAccuracy: 0,
+              heading: 0,
+              headingAccuracy: 0,
+              speed: 0,
+              speedAccuracy: 0,
+            );
+          },
+        );
+        
+        print('✅ 위치 가져오기 성공!');
+        print('✅ 위도: ${_currentPosition!.latitude}');
+        print('✅ 경도: ${_currentPosition!.longitude}');
+      } catch (e, stackTrace) {
+        print('❌ 위치 가져오기 실패: $e');
+        print('❌ 에러 타입: ${e.runtimeType}');
+        print('❌ 스택 트레이스: $stackTrace');
+        
+        // 권한 에러인 경우
+        if (e.toString().contains('permission') || 
+            e.toString().contains('denied') ||
+            e.toString().contains('LocationServiceDisabledException')) {
+          setState(() {
+            _errorMessage = '위치 권한이 필요합니다.\n\n설정 → 개인정보 보호 → 위치 서비스에서\n앱의 위치 권한을 허용해주세요.';
+            _isLoading = false;
+          });
+          print('❌ 위치 권한 에러 - 사용자에게 안내');
+          return;
+        }
+        
+        // 타임아웃이나 기타 에러인 경우 기본 위치 사용
+        print('⚠️ 기본 위치 사용 (서울 시청)');
+        _currentPosition = Position(
+          latitude: 37.5665,  // 서울 시청 위도
+          longitude: 126.9780, // 서울 시청 경도
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+      }
 
       if (_currentPosition == null) {
-        throw Exception("위치 정보를 가져올 수 없습니다.");
+        print('⚠️ 위치가 null - 기본 위치 사용');
+        _currentPosition = Position(
+          latitude: 37.5665,
+          longitude: 126.9780,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
       }
 
       print('✅ 위도: ${_currentPosition!.latitude}');
@@ -101,20 +238,8 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
       // 2. API 호출
       print('\n🍽️ [3단계] 백엔드 API 호출');
 
-      // 서버 URL 설정 (플랫폼별로 다른 URL 사용)
-      String baseUrl;
-      if (Platform.isAndroid) {
-        baseUrl = '10.0.2.2:8080'; // Android 에뮬레이터
-      } else if (Platform.isIOS) {
-        // ⚠️ 개인 IP 주소 변경 필요 ⚠️
-        // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
-        // Mac IP 주소 확인: ifconfig | grep "inet " | grep -v 127.0.0.1
-        // Windows IP 주소 확인: ipconfig
-        // Linux IP 주소 확인: hostname -I
-        baseUrl = '192.168.50.80:8080'; // 서버 IP 주소 (개인별로 변경 필요) - 현재 확인된 IP
-      } else {
-        baseUrl = 'localhost:8080'; // 기타 플랫폼
-      }
+      // 공통 설정에서 base URL 사용
+      final baseUrl = ApiConfig.baseUrl;
       final String path = '/api/map/search';
       final params = {
         'foodName': widget.foodName,
@@ -122,7 +247,8 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
         'longitude': _currentPosition!.longitude.toString(),
       };
 
-      var uri = Uri.http(baseUrl, path, params);
+      // URI 생성 (ngrok은 https, 로컬은 http)
+      var uri = Uri.parse('$baseUrl$path').replace(queryParameters: params);
 
       print('📡 요청 URL: $uri');
       print('📤 요청 파라미터:');

@@ -61,6 +61,20 @@
 		<string>http</string>
 		<string>youtube</string>
 	</array>
+	<!-- ✅ OAuth2 딥링크: myapp://oauth2/callback 처리 -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.busanit501.teamproject.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>myapp</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

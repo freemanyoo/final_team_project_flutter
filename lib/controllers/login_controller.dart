@@ -12,39 +12,15 @@ import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:uni_links/uni_links.dart'; // <--- uni_links 제거
 import 'package:app_links/app_links.dart'; // <--- app_links 추가
+import '../core/config/api_config.dart'; // 공통 설정 사용
 
 /// 하나의 컨트롤러로 로그인/회원가입/소셜로그인을 모두 처리
 /// - 페이지들(login_page.dart, signup_page.dart)은 이 컨트롤러만 사용하면 됨
 class LoginController {
   LoginController();
 
-  /// 플랫폼별 서버 URL 자동 설정
-  /// ⚠️ Google OAuth2 정책: IP 주소는 리다이렉트 URI로 허용되지 않음
-  /// 
-  /// 실제 기기 테스트: ngrok 사용
-  /// 고정 도메인: sterling-jay-well.ngrok-free.app
-  /// 실행: ngrok http 8080 --domain=sterling-jay-well.ngrok-free.app
-  static const String _ngrokUrl = 'https://sterling-jay-well.ngrok-free.app';
-  
-  static String get _baseUrl {
-    // ngrok URL이 설정되어 있으면 모든 플랫폼에서 ngrok 사용 (실제 기기 테스트용)
-    if (_ngrokUrl.isNotEmpty) {
-      return _ngrokUrl;
-    }
-    
-    // ngrok 미사용 시: 로컬 개발용 (에뮬레이터/시뮬레이터)
-    if (kIsWeb) {
-      return 'http://localhost:8080';
-    } else if (Platform.isAndroid) {
-      // Android 에뮬레이터: 10.0.2.2는 localhost를 가리킴
-      return 'http://10.0.2.2:8080';
-    } else if (Platform.isIOS) {
-      // iOS 시뮬레이터: localhost 사용 가능
-      return 'http://localhost:8080';
-    } else {
-      return 'http://localhost:8080';
-    }
-  }
+  /// 공통 설정에서 base URL 가져오기
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   Dio? _dioInstance;
   Dio get _dio {
@@ -54,9 +30,7 @@ class LoginController {
       receiveTimeout: const Duration(seconds: 10),
       validateStatus: (_) => true, // 백엔드 에러 바디 읽기 위함
       // ngrok 무료 버전 브라우저 경고 페이지 우회
-      headers: _ngrokUrl.isNotEmpty
-          ? {'ngrok-skip-browser-warning': 'true'}
-          : null,
+      headers: ApiConfig.ngrokHeaders,
     ));
     return _dioInstance!;
   }

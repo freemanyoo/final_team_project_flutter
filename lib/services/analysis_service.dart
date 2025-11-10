@@ -2,49 +2,16 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mime/mime.dart';
+import '../core/config/api_config.dart'; // 공통 설정 사용
 
 class AnalysisService {
-  // 플랫폼별 서버 URL 자동 설정
-  // iOS 시뮬레이터: http://127.0.0.1:8080
-  // Android 에뮬레이터: http://10.0.2.2:8080
-  // 실제 기기: 수동 설정 필요 (서버 IP 주소)
-  
+  /// 공통 설정에서 base URL 가져오기
   static String get baseUrl {
-    String url;
-    
-    // 웹 환경
-    if (kIsWeb) {
-      url = 'http://localhost:8080/api/analysis';
-    }
-    // Android 에뮬레이터
-    else if (Platform.isAndroid) {
-      url = 'http://10.0.2.2:8080/api/analysis';
-    }
-    // iOS 시뮬레이터 또는 실제 기기
-    else if (Platform.isIOS) {
-      // ⚠️ 개인 IP 주소 변경 필요 ⚠️
-      // iOS 시뮬레이터는 localhost 접근이 안 될 수 있으므로 Mac의 실제 IP 주소 사용
-      // Mac IP 주소 확인: ifconfig | grep "inet " | grep -v 127.0.0.1
-      // Windows IP 주소 확인: ipconfig
-      // Linux IP 주소 확인: hostname -I
-      // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
-      // 현재 확인된 IP: 192.168.50.80
-      url = 'http://192.168.50.80:8080/api/analysis'; // 서버 IP 주소 (개인별로 변경 필요)
-      
-      // localhost로 시도하려면 아래 주석 해제하고 위 줄 주석 처리
-      // url = 'http://localhost:8080/api/analysis';
-    }
-    // 기본값 (기타 플랫폼)
-    else {
-      url = 'http://localhost:8080/api/analysis';
-    }
-    
+    final url = ApiConfig.getApiUrl('/api/analysis');
     // 디버그: 사용 중인 URL 출력
+    ApiConfig.printCurrentUrl();
     print('🔗 AnalysisService baseUrl: $url');
-    print('📱 Platform: ${Platform.isIOS ? 'iOS' : Platform.isAndroid ? 'Android' : 'Other'}');
-    
     return url;
   }
   
@@ -256,21 +223,8 @@ class AnalysisService {
     String? keyword,
     String order = 'relevance',
   }) async {
-    // 플랫폼별 서버 URL 설정
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:8080';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:8080';
-    } else if (Platform.isIOS) {
-      // ⚠️ 개인 IP 주소 변경 필요 ⚠️
-      // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
-      // 현재 확인된 IP: 192.168.50.80
-      baseUrl = 'http://192.168.50.80:8080'; // 서버 IP 주소 (개인별로 변경 필요)
-    } else {
-      baseUrl = 'http://localhost:8080';
-    }
-
+    // 공통 설정에서 base URL 사용
+    final baseUrl = ApiConfig.baseUrl;
     final url = Uri.parse('$baseUrl/api/youtube/search').replace(
       queryParameters: {
         'foodName': foodName,
@@ -317,21 +271,8 @@ class AnalysisService {
     int page = 0,
     int size = 10,
   }) async {
-    // 플랫폼별 서버 URL 설정
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:8080';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:8080';
-    } else if (Platform.isIOS) {
-      // ⚠️ 개인 IP 주소 변경 필요 ⚠️
-      // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
-      // 현재 확인된 IP: 192.168.50.80
-      baseUrl = 'http://192.168.50.80:8080'; // 서버 IP 주소 (개인별로 변경 필요)
-    } else {
-      baseUrl = 'http://localhost:8080';
-    }
-
+    // 공통 설정에서 base URL 사용
+    final baseUrl = ApiConfig.baseUrl;
     final url = Uri.parse('$baseUrl/api/analysis/history').replace(
       queryParameters: {
         'userId': userId.toString(),
@@ -387,20 +328,7 @@ class AnalysisService {
 
   /// 썸네일 이미지 URL 생성
   static String getThumbnailUrl(String historyId) {
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:8080';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:8080';
-    } else if (Platform.isIOS) {
-      // ⚠️ 개인 IP 주소 변경 필요 ⚠️
-      // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
-      // 현재 확인된 IP: 192.168.50.80
-      baseUrl = 'http://192.168.50.80:8080'; // 서버 IP 주소 (개인별로 변경 필요)
-    } else {
-      baseUrl = 'http://localhost:8080';
-    }
-    return '$baseUrl/api/analysis/thumbnail/$historyId';
+    return ApiConfig.getApiUrl('/api/analysis/thumbnail/$historyId');
   }
 
   /// YouTube 레시피 클릭 시 저장
@@ -410,21 +338,8 @@ class AnalysisService {
     required String title,
     required String url,
   }) async {
-    // 플랫폼별 서버 URL 설정
-    String baseUrl;
-    if (kIsWeb) {
-      baseUrl = 'http://localhost:8080';
-    } else if (Platform.isAndroid) {
-      baseUrl = 'http://10.0.2.2:8080';
-    } else if (Platform.isIOS) {
-      // ⚠️ 개인 IP 주소 변경 필요 ⚠️
-      // 아래 IP 주소를 본인의 서버 IP 주소로 변경하세요!
-      // 현재 확인된 IP: 192.168.50.80
-      baseUrl = 'http://192.168.50.80:8080'; // 서버 IP 주소 (개인별로 변경 필요)
-    } else {
-      baseUrl = 'http://localhost:8080';
-    }
-
+    // 공통 설정에서 base URL 사용
+    final baseUrl = ApiConfig.baseUrl;
     final uri = Uri.parse('$baseUrl/api/analysis/youtube-recipe/click').replace(
       queryParameters: {
         'userId': userId.toString(),
