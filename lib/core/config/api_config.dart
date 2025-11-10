@@ -13,7 +13,12 @@ class ApiConfig {
   // ============================================
   // OAuth2 로그인만 NGROK 사용 (소셜 로그인 리다이렉트 필요)
   // NGROK 미사용 시: 빈 문자열로 두세요 (로컬 서버로 폴백)
-  static const String _ngrokUrl = 'https://sterling-jay-well.ngrok-free.app';
+  // 
+  // ⚠️ 현재 상태: NGROK 미사용 (소셜 로그인 사용 안 함)
+  // - 일반 로그인/회원가입: 로컬 서버 사용
+  // - 소셜 로그인: NGROK 필요 (현재 미사용)
+  static const String _ngrokUrl = ''; // NGROK 미사용
+  // static const String _ngrokUrl = 'https://sterling-jay-well.ngrok-free.app'; // 소셜 로그인 테스트 시 활성화
   
   // ============================================
   // 🔧 로컬 개발 설정 (일반 API용)
@@ -22,8 +27,8 @@ class ApiConfig {
   // Mac IP 확인: ifconfig | grep "inet " | grep -v 127.0.0.1
   // Windows IP 확인: ipconfig
   // Linux IP 확인: hostname -I
-  // 현재 확인된 IP: 10.100.201.26 (Android 실제 기기용)
-  static const String _serverIp = '10.100.201.26'; // 본인의 서버 IP 주소로 변경!
+  // 현재 확인된 IP: 192.168.50.80 (2025-11-10 확인)
+  static const String _serverIp = '192.168.50.80'; // 본인의 서버 IP 주소로 변경!
   static const int _serverPort = 8080;
   
   /// 플랫폼별 로컬 서버 URL 반환 (일반 API용)
@@ -38,12 +43,12 @@ class ApiConfig {
     }
     // iOS 시뮬레이터 또는 실제 기기
     else if (Platform.isIOS) {
-      // iOS 시뮬레이터는 localhost 사용 가능하지만, 실제 기기는 IP 주소 필요
-      // 실제 기기에서 테스트할 때는 _serverIp 사용
-      return 'http://$_serverIp:$_serverPort';
+      // ⚠️ 시뮬레이터 사용 중: localhost 사용
+      // 실제 기기 사용 시: 아래 주석을 해제하고 위의 return을 주석 처리
+      return 'http://localhost:$_serverPort';
       
-      // 시뮬레이터만 사용할 경우 아래 주석 해제
-      // return 'http://localhost:$_serverPort';
+      // 실제 기기 사용 시 주석 해제
+      // return 'http://$_serverIp:$_serverPort';
     }
     // 기본값
     else {

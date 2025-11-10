@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 보안 관련 파일 (민감한 정보 포함)
+lib/core/config/api_config.dart
+android/app/src/main/AndroidManifest.xml
+
+# 큰 파일 (빌드 아티팩트)
+*.hprof
+android/build/
+android/java_pid*.hprof

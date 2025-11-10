@@ -36,15 +36,14 @@ class BottomNav extends StatelessWidget {
                 onTap: () => onTap(0),
               ),
               _NavItem(
-                icon: Icons.schedule,
-                label: '이력',
+                icon: Icons.analytics,
+                label: '영양소',
                 isActive: currentIndex == 1,
-                showBadge: true,
                 onTap: () => onTap(1),
               ),
               _NavItem(
                 icon: Icons.map,
-                label: 'maps', // ⭐ maps 탭
+                label: '맛집검색',
                 isActive: currentIndex == 2,
                 onTap: () => onTap(2),
               ),

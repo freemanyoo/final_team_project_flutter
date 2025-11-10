@@ -150,35 +150,66 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
       print('🍽️ 플랫폼: ${Platform.isIOS ? "iOS" : "Android"}');
       
       try {
-        // 실제 기기에서는 적절한 정확도 사용
-        LocationAccuracy accuracy = LocationAccuracy.medium; // medium이 실기기에서 가장 안정적
-        
-        print('🍽️ 위치 정확도: $accuracy');
-        print('🍽️ 위치 가져오기 시작...');
-        
-        _currentPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: accuracy,
-          timeLimit: const Duration(seconds: 10), // 실기기에서는 10초로 충분
-        ).timeout(
-          const Duration(seconds: 15), // 전체 타임아웃 15초
-          onTimeout: () {
-            print('⚠️ 위치 가져오기 타임아웃 (15초)');
-            print('⚠️ 기본 위치 사용 (서울 시청)');
-            // 타임아웃 시 서울 시청 좌표 사용 (기본값)
-            return Position(
-              latitude: 37.5665,
-              longitude: 126.9780,
-              timestamp: DateTime.now(),
-              accuracy: 0,
-              altitude: 0,
-              altitudeAccuracy: 0,
-              heading: 0,
-              headingAccuracy: 0,
-              speed: 0,
-              speedAccuracy: 0,
-            );
-          },
-        );
+        // iOS 시뮬레이터에서는 빠르게 실패 처리하고 기본 위치 사용
+        if (Platform.isIOS) {
+          print('🍽️ iOS 시뮬레이터 감지 - 빠른 타임아웃 설정');
+          LocationAccuracy accuracy = LocationAccuracy.low; // 시뮬레이터는 low로 빠르게
+          
+          print('🍽️ 위치 정확도: $accuracy');
+          print('🍽️ 위치 가져오기 시작 (시뮬레이터용 빠른 타임아웃)...');
+          
+          _currentPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: accuracy,
+            timeLimit: const Duration(seconds: 3), // 시뮬레이터는 3초로 짧게
+          ).timeout(
+            const Duration(seconds: 5), // 전체 타임아웃 5초
+            onTimeout: () {
+              print('⚠️ 위치 가져오기 타임아웃 (시뮬레이터)');
+              print('⚠️ 기본 위치 사용 (서울 시청)');
+              return Position(
+                latitude: 37.5665,
+                longitude: 126.9780,
+                timestamp: DateTime.now(),
+                accuracy: 0,
+                altitude: 0,
+                altitudeAccuracy: 0,
+                heading: 0,
+                headingAccuracy: 0,
+                speed: 0,
+                speedAccuracy: 0,
+              );
+            },
+          );
+        } else {
+          // Android는 기존 설정 유지
+          LocationAccuracy accuracy = LocationAccuracy.medium;
+          
+          print('🍽️ 위치 정확도: $accuracy');
+          print('🍽️ 위치 가져오기 시작...');
+          
+          _currentPosition = await Geolocator.getCurrentPosition(
+            desiredAccuracy: accuracy,
+            timeLimit: const Duration(seconds: 10),
+          ).timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              print('⚠️ 위치 가져오기 타임아웃 (15초)');
+              print('⚠️ 기본 위치 사용 (서울 시청)');
+              return Position(
+                latitude: 37.5665,
+                longitude: 126.9780,
+                timestamp: DateTime.now(),
+                accuracy: 0,
+                altitude: 0,
+                altitudeAccuracy: 0,
+                heading: 0,
+                headingAccuracy: 0,
+                speed: 0,
+                speedAccuracy: 0,
+              );
+            },
+          );
+        }
         
         print('✅ 위치 가져오기 성공!');
         print('✅ 위도: ${_currentPosition!.latitude}');

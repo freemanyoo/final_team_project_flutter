@@ -1,6 +1,7 @@
 // lib/screens/login_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../controllers/login_controller.dart';
 import 'main_screen.dart';
@@ -22,8 +23,11 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    // 소셜 로그인 리다이렉트 리스너 시작
-    _c.startLinkListener(onSuccess: _onLoginSuccess);
+    // OAuth2 리다이렉트를 위한 리스너 시작
+    // 로그아웃 후 재진입 시 이전 링크를 무시하기 위해 ignoreInitialLink: true
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _c.startLinkListener(onSuccess: _onLoginSuccess, ignoreInitialLink: true);
+    });
   }
 
   @override
@@ -46,6 +50,7 @@ class _LoginPageState extends State<LoginPage> {
       );
       
       // 스택을 정리하고 MainScreen으로 이동
+      // 로그인 후 MainScreen이 새로 생성되므로 MyPage도 새로 생성되어 자동으로 사용자 정보를 로드합니다
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainScreen()),
         (route) => false, // 모든 이전 라우트 제거

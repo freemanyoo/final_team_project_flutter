@@ -5,13 +5,18 @@ import 'package:flutter/services.dart';
 // (이 파일들을 lib/screens/ 폴더로 옮기는 것을 추천합니다!)
 import 'screens/login_page.dart';
 import 'screens/signup_page.dart';
+import 'screens/main_screen.dart';
+import 'screens/splash_screen.dart';
+import 'util/auth_helper.dart';
 
 
 // import 'screens/signup_page.dart'; // 필요시
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
+  
+  // 화면 방향 설정 (비동기로 처리하여 블로킹 방지)
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
 
@@ -44,11 +49,57 @@ class MyApp extends StatelessWidget {
         // (선택) 여기에 이전에 만들었던 '귀염뽀짝' 테마(버튼, 텍스트필드)를
         // 추가하면 로그인/회원가입 페이지에도 바로 적용됩니다!
       ),
-      // [핵심] 앱의 첫 화면을 MainScreen이 아닌 LoginPage로 변경합니다.
-      home: LoginPage(),
+      // [핵심] 앱 시작 시 스플래시 화면 표시 후 토큰 확인하여 자동 로그인
+      home: const SplashScreen(
+        child: AuthWrapper(),
+      ),
       routes: {
         '/signup': (_) => const SignupPage(), // ✅ 회원가입 라우트
       },
     );
+  }
+}
+
+/// 앱 시작 시 토큰을 확인하여 자동 로그인 처리
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final isLoggedIn = await AuthHelper.isLoggedIn();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = isLoggedIn;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      // 로딩 중에는 스플래시 화면 표시
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // 토큰이 있으면 MainScreen으로, 없으면 LoginPage로
+    return _isLoggedIn ? const MainScreen() : const LoginPage();
   }
 }

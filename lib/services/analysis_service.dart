@@ -3,9 +3,34 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/config/api_config.dart'; // 공통 설정 사용
 
 class AnalysisService {
+  // FlutterSecureStorage 인스턴스
+  static const _storage = FlutterSecureStorage();
+  
+  /// 인증 헤더 가져오기 (JWT 토큰 포함)
+  /// 토큰이 있으면 Authorization 헤더를 포함하고, 없으면 빈 헤더 반환
+  /// 주의: Multipart 요청에서는 Content-Type을 설정하지 않습니다 (자동으로 설정됨)
+  Future<Map<String, String>> _getAuthHeaders() async {
+    try {
+      final token = await _storage.read(key: 'accessToken');
+      if (token != null && token.isNotEmpty) {
+        print('✅ JWT 토큰 발견 (길이: ${token.length})');
+        return {
+          'Authorization': 'Bearer $token',
+          // Multipart 요청에서는 Content-Type을 설정하지 않음 (자동으로 multipart/form-data로 설정됨)
+        };
+      } else {
+        print('⚠️ JWT 토큰이 없습니다.');
+      }
+    } catch (e) {
+      print('⚠️ 토큰 읽기 오류: $e');
+    }
+    // 토큰이 없거나 오류가 발생한 경우 빈 헤더 반환
+    return {};
+  }
   /// 공통 설정에서 base URL 가져오기
   static String get baseUrl {
     final url = ApiConfig.getApiUrl('/api/analysis');
@@ -26,12 +51,12 @@ class AnalysisService {
   /// 이미지 분석 요청
   /// 
   /// [imageFile] 분석할 이미지 파일
-  /// [userId] 사용자 ID (임시로 1L 사용)
+  /// [userId] 사용자 ID (선택사항, JWT 토큰에서 자동으로 추출됨)
   /// [youtubeKeyword] YouTube 검색 키워드 (선택사항)
   /// [youtubeOrder] YouTube 정렬 옵션 (relevance, viewCount, date)
   Future<AnalysisResult> analyzeImage({
     required File imageFile,
-    required int userId,
+    int? userId, // 선택적으로 변경 (백엔드가 JWT에서 자동 추출)
     String? youtubeKeyword,
     String youtubeOrder = 'relevance',
   }) async {
@@ -93,11 +118,25 @@ class AnalysisService {
       request.files.add(multipartFile);
       print('✅ 파일 추가 완료');
       
-      // 파라미터 추가
-      request.fields['userId'] = userId.toString();
+      // 파라미터 추가 (userId는 선택적, 백엔드가 JWT에서 자동 추출)
+      if (userId != null) {
+        request.fields['userId'] = userId.toString();
+      }
       if (youtubeKeyword != null && youtubeKeyword.trim().isNotEmpty) {
         request.fields['youtubeKeyword'] = youtubeKeyword;
         request.fields['youtubeOrder'] = youtubeOrder;
+      }
+      
+      // JWT 토큰을 헤더에 포함 (백엔드가 자동으로 userId 추출)
+      final headers = await _getAuthHeaders();
+      request.headers.addAll(headers);
+      print('✅ 헤더 추가 완료');
+      print('   헤더 개수: ${request.headers.length}');
+      if (request.headers.containsKey('Authorization')) {
+        final authHeader = request.headers['Authorization']!;
+        print('   Authorization 헤더: ${authHeader.substring(0, authHeader.length > 50 ? 50 : authHeader.length)}...');
+      } else {
+        print('   ⚠️ Authorization 헤더가 없습니다!');
       }
       print('✅ 파라미터 추가 완료');
 
@@ -268,18 +307,22 @@ class AnalysisService {
   /// 분석 히스토리 조회
   /// JWT 토큰에서 자동으로 사용자 ID를 추출합니다.
   Future<List<dynamic>> getAnalysisHistory({
-    required int userId,
+    int? userId, // 선택적 파라미터로 변경 (백엔드가 JWT에서 자동 추출)
     int page = 0,
     int size = 10,
   }) async {
     // 일반 API용 base URL 사용 (로컬 서버)
     final baseUrl = ApiConfig.apiBaseUrl;
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'size': size.toString(),
+    };
+    // userId는 선택적 (백엔드가 JWT에서 자동 추출하므로)
+    // if (userId != null) {
+    //   queryParams['userId'] = userId.toString();
+    // }
     final url = Uri.parse('$baseUrl/api/analysis/history').replace(
-      queryParameters: {
-        'userId': userId.toString(),
-        'page': page.toString(),
-        'size': size.toString(),
-      },
+      queryParameters: queryParams,
     );
 
     try {
@@ -335,26 +378,35 @@ class AnalysisService {
   }
 
   /// YouTube 레시피 클릭 시 저장
+  /// 백엔드가 JWT에서 자동으로 userId를 추출합니다.
   Future<void> saveClickedYouTubeRecipe({
-    required int userId,
+    int? userId, // 선택적 파라미터 (백엔드가 JWT에서 자동 추출)
     required String historyId,
     required String title,
     required String url,
   }) async {
     // 일반 API용 base URL 사용 (로컬 서버)
     final baseUrl = ApiConfig.apiBaseUrl;
+    final queryParams = <String, String>{
+      'historyId': historyId,
+      'title': title,
+      'url': url,
+    };
+    // userId는 선택적 (백엔드가 JWT에서 자동 추출하므로)
     final uri = Uri.parse('$baseUrl/api/analysis/youtube-recipe/click').replace(
-      queryParameters: {
-        'userId': userId.toString(),
-        'historyId': historyId,
-        'title': title,
-        'url': url,
-      },
+      queryParameters: queryParams,
     );
 
     try {
       // JWT 토큰을 헤더에 포함
       final headers = await _getAuthHeaders();
+      print('🔍 YouTube 레시피 저장 요청:');
+      print('   URL: $uri');
+      print('   historyId: $historyId');
+      print('   title: $title');
+      print('   url: $url');
+      print('   Authorization 헤더 존재: ${headers.containsKey('Authorization')}');
+      
       final response = await http.post(uri, headers: headers).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
@@ -362,13 +414,19 @@ class AnalysisService {
         },
       );
 
+      print('🔍 YouTube 레시피 저장 응답:');
+      print('   상태 코드: ${response.statusCode}');
+      print('   응답 본문: ${response.body}');
+
       if (response.statusCode == 200) {
-        // 성공적으로 저장됨
+        print('✅ YouTube 레시피 저장 성공');
         return;
       } else {
+        print('❌ YouTube 레시피 저장 실패: ${response.statusCode}');
         throw AnalysisException('YouTube 레시피 저장 실패: ${response.statusCode}');
       }
     } catch (e) {
+      print('❌ YouTube 레시피 저장 오류: $e');
       if (e is AnalysisException) {
         rethrow;
       }

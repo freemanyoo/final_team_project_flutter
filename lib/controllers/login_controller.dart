@@ -20,7 +20,9 @@ class LoginController {
   LoginController();
 
   /// 공통 설정에서 base URL 가져오기
+  /// OAuth2 로그인은 authBaseUrl 사용 (일반 API는 baseUrl 사용)
   static String get _baseUrl => ApiConfig.baseUrl;
+  static String get _authBaseUrl => ApiConfig.authBaseUrl;
 
   Dio? _dioInstance;
   Dio get _dio {
@@ -44,24 +46,36 @@ class LoginController {
 
   /// 앱으로 돌아오는 커스텀 스킴(예: myapp://oauth2/callback?access=...&refresh=...)을 구독
   /// [onSuccess]는 토큰 저장이 끝나면 호출됨
-  void startLinkListener({required VoidCallback onSuccess}) async {
+  /// [ignoreInitialLink]가 true이면 초기 링크를 무시 (로그아웃 후 재진입 시)
+  void startLinkListener({required VoidCallback onSuccess, bool ignoreInitialLink = false}) async {
     // 웹에서는 deep link 스트림이 없음
     if (kIsWeb) return;
 
-    debugPrint('🔗 Deep Link 리스너 시작');
+    debugPrint('🔗 Deep Link 리스너 시작 (ignoreInitialLink: $ignoreInitialLink)');
     _linkSub?.cancel();
 
     // 1. 앱이 완전히 종료되었다가 링크로 시작한 경우 처리
-    try {
-      final initialUri = await _appLinks.getInitialLink();
-      if (initialUri != null) {
-        debugPrint('🔗 초기 링크 수신: $initialUri');
-        await _handleOAuthRedirect(initialUri, onSuccess);
-      } else {
-        debugPrint('🔗 초기 링크 없음');
+    // 단, 로그아웃 후 재진입 시 이전 링크를 무시
+    if (!ignoreInitialLink) {
+      try {
+        final initialUri = await _appLinks.getInitialLink();
+        if (initialUri != null) {
+          debugPrint('🔗 초기 링크 수신: $initialUri');
+          // 토큰이 이미 있으면 이전 링크이므로 무시 (로그아웃 후 재진입 시)
+          final existingToken = await _storage.read(key: 'accessToken');
+          if (existingToken != null && existingToken.isNotEmpty) {
+            debugPrint('⚠️ 이미 토큰이 존재하므로 초기 링크 무시 (로그아웃 후 재진입 가능성)');
+            return;
+          }
+          await _handleOAuthRedirect(initialUri, onSuccess);
+        } else {
+          debugPrint('🔗 초기 링크 없음');
+        }
+      } catch (e) {
+        debugPrint('❌ 초기 링크 처리 오류: $e');
       }
-    } catch (e) {
-      debugPrint('❌ 초기 링크 처리 오류: $e');
+    } else {
+      debugPrint('⚠️ 초기 링크 무시 모드 (로그아웃 후 재진입)');
     }
 
     // 2. 실행 중에 들어오는 링크 스트림 구독
@@ -169,8 +183,10 @@ class LoginController {
     required String provider, // 'google' | 'naver'
     required void Function(String message) onError,
   }) async {
-    final url = Uri.parse('$_baseUrl/oauth2/authorization/$provider');
+    // OAuth2 로그인은 authBaseUrl 사용 (에뮬레이터에서는 10.0.2.2 사용)
+    final url = Uri.parse('$_authBaseUrl/oauth2/authorization/$provider');
     debugPrint('🔗 소셜 로그인 URL: $url (provider: $provider)');
+    debugPrint('   authBaseUrl: $_authBaseUrl');
     
     if (kIsWeb) {
       // 웹: 새 탭으로 엶(동일 오리진에서 리다이렉트 처리 권장)
