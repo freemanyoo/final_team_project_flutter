@@ -1,0 +1,30 @@
+[33m372da11[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmid2[m[33m, [m[1;31morigin/mid2[m[33m)[m JWT 기반 사용자별 히스토리 조회 구현
+[33m8c2c168[m 위치 권한 처리 및 Google Maps 초기화 개선
+[33m6f5f0f8[m 위치 권한 처리 및 Google Maps 초기화 개선
+[33m6525e61[m Merge pull request #9 from freemanyoo/mid2
+[33mdcaf6fe[m 엔그록 설정 플랫폼별 url 설정
+[33m06d0b4a[m Merge remote-tracking branch 'origin/mid2' into mid2
+[33m481da9f[m 결과 페이지 키워드 기준 정렬 기준 검색기능 상위예측 3개출력
+[33mcf9a86e[m 마이페이지 추가
+[33me7ca6f7[m 이미지 사진촬영 갤러리 선택시 확인 추가
+[33m94a4bec[m 링크 클릭시 히스토리 저장
+[33meb67606[m Merge pull request #8 from ryumax99/rsw2
+[33mfae7194[m Merge remote-tracking branch 'origin/mid2' into rsw2
+[33m5fe8c19[m 로그인 연결2
+[33mcbd6ef8[m 영양소 값 가져오기 지도 불러오기2
+[33mdf4fb03[m 영양소 값 가져오기 지도 불러오기
+[33m323406f[m 로그인 연결
+[33m2d78a26[m Merge remote-tracking branch 'origin/mid2' into mid2
+[33m67fedf6[m Merge pull request #5 from reokkamy/kmj1111
+[33m09342ee[m 12
+[33mdbfa5d8[m 캡쳐페이지 음바페 비디오 추가 카메라 이미지 업로드 기능구현
+[33ma88832d[m 12
+[33maea5a26[m 12
+[33m3beb0e2[m 12
+[33m41fa329[m Merge pull request #3 from reokkamy/kmj1106
+[33m3a8d414[m 12
+[33m860a752[m 12
+[33me5d2715[m 12
+[33m164c8a5[m Merge pull request #2 from reokkamy/kmj
+[33mf874248[m 12
+[33md4c7865[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m first commit
